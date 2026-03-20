@@ -285,15 +285,9 @@ class _CreatedTOState extends State<CreatedTO> {
                       (_isDeleteMode ? 3 : 2): const FixedColumnWidth(120),
                       (_isDeleteMode ? 4 : 3): const FixedColumnWidth(95),
                       (_isDeleteMode ? 5 : 4): const FixedColumnWidth(80),
-                      (_isDeleteMode ? 6 : 5): const FixedColumnWidth(
-                        120,
-                      ), // packer
-                      (_isDeleteMode ? 7 : 6): const FixedColumnWidth(
-                        120,
-                      ), // create
-                      (_isDeleteMode ? 8 : 7): const FixedColumnWidth(
-                        120,
-                      ), // complete
+                      (_isDeleteMode ? 6 : 5): const FixedColumnWidth(120,), // packer
+                      (_isDeleteMode ? 7 : 6): const FixedColumnWidth(120,), // create
+                      (_isDeleteMode ? 8 : 7): const FixedColumnWidth(120,), // complete
                       (_isDeleteMode ? 9 : 8): const FixedColumnWidth(70),
                     },
                     children: [

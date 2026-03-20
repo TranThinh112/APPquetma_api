@@ -670,7 +670,7 @@ class _CreateTOState extends State<CreateTO>
                         const SizedBox(height: 4),
                         const SizedBox(height: 8),
                         Row(
-                          children:  [
+                          children: [
                             Text(
                               'Packer: $packer',
                               style: TextStyle(
@@ -681,7 +681,6 @@ class _CreateTOState extends State<CreateTO>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
                         const SizedBox(height: 12),
                         // ── Dữ liệu input cùng hàng ──
                         Row(
@@ -710,19 +709,19 @@ class _CreateTOState extends State<CreateTO>
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     borderSide: BorderSide(
-                                      color: Colors.grey[300]!,
+                                      color: Colors.grey,
                                     ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     borderSide: BorderSide(
-                                      color: Colors.grey[300]!,
+                                      color: Colors.black,
                                     ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     borderSide: BorderSide(
-                                      color: Colors.orange[600]!,
+                                      color: Colors.black,
                                       width: 2,
                                     ),
                                   ),

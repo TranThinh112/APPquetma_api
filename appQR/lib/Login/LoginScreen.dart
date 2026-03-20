@@ -1,6 +1,6 @@
   import '../data/api_service.dart';
-import '../data/order_dtb.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -22,6 +22,20 @@ class _LoginPageState extends State<LoginPage> {
     forgotUsernameController.dispose();
     super.dispose();
   }
+  void _showTopSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating, // 👈 để nổi lên
+        margin: const EdgeInsets.only(
+          top: 50,
+          left: 20,
+          right: 20,
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   // Hàm xử lý Đăng nhập với Database
   Future login() async {
@@ -29,21 +43,9 @@ class _LoginPageState extends State<LoginPage> {
     final String pass = password.text.trim();
 
     if (uName.isEmpty || pass.isEmpty) {
-      _showSnackBar("Vui lòng nhập đầy đủ tài khoản và mật khẩu");
+      _showTopSnackBar("Vui lòng nhập đầy đủ tài khoản và mật khẩu");
       return;
     }
-
-    // 1) Thử login local DB
-    final localUser = await OrderDatabase.instance.login(uName, pass);
-    if (localUser != null) {
-      Navigator.pushReplacementNamed(
-        context,
-        '/home',
-        arguments: localUser,
-      );
-      return;
-    }
-
     // 2) Fallback API
     final user = await ApiService.getUsers(uName, pass);
 
@@ -54,21 +56,15 @@ class _LoginPageState extends State<LoginPage> {
         arguments: user,
       );
     } else {
-      _showSnackBar("Sai tài khoản hoặc mật khẩu");
+      _showTopSnackBar("Sai tài khoản hoặc mật khẩu");
     }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   Future<void> _requestPasswordReset() async {
     final String uName = forgotUsernameController.text.trim();
 
     if (uName.isEmpty) {
-      _showSnackBar("Vui lòng nhập tên tài khoản");
+      _showTopSnackBar("Vui lòng nhập tên tài khoản");
       return;
     }
 
@@ -77,32 +73,14 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final localUser = await OrderDatabase.instance.getUserByUsername(uName);
+      final localUser = await ApiService.getUserByUsername(uName);
       var user = localUser;
 
-      // Nếu không có local, thử tìm trên server
+      //  tìm trên server
       if (user == null) {
-        user = await ApiService.getUserByUsername(uName);
-      }
-
-      if (user == null) {
-        // Hiển thị thông báo lớn giữa màn hình cho dễ thấy
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Không tìm thấy tài khoản'),
-            content: const Text('Vui lòng kiểm tra lại tên đăng nhập và thử lại.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        _showTopSnackBar("Không tìm thấy tài khoản");
         return;
       }
-
       // Hiển thị dialog loading 2s khi xác thực thành công
       showDialog(
         context: context,
@@ -116,27 +94,17 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       Navigator.of(context).pop();
 
-      final int id = user['id'] as int;
-
-      if (localUser == null) {
-        // Nếu user chỉ có server, chèn vào local và đổi pass
-        await OrderDatabase.instance.upsertUser(uName, '123456');
-      } else {
-        // user đã có local, update pass local
-        await OrderDatabase.instance.updateUserPasswordById(id, '123456');
-      }
-
       // Đồng bộ lên server
       final bool serverUpdated = await ApiService.updateUserPasswordOnServer(uName, '123456');
+
       if (serverUpdated) {
-        _showSnackBar("Đã đổi mật khẩu thành 123456 cho $uName (server OK)");
+        _showTopSnackBar("Đã reset mật khẩu: 123456 cho $uName");
       } else {
-        _showSnackBar("Đã đổi password local thành công, nhưng server chưa cập nhật");
+        _showTopSnackBar("Đã đổi password local thành công, nhưng server chưa cập nhật");
       }
 
-      Navigator.of(context).pop();
     } catch (e) {
-      _showSnackBar("Lỗi khi lấy lại mật khẩu: $e");
+      _showTopSnackBar("Lỗi khi lấy lại mật khẩu: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -171,6 +139,7 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 20),
             TextField(
               controller: forgotUsernameController,
+              enabled: !_isResettingPassword,
               decoration: InputDecoration(
                 hintText: "Nhập tên tài khoản",
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

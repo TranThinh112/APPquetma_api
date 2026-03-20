@@ -60,13 +60,12 @@ class ApiService {
     print(response.body);
     return null;
   }
-
   /// Tìm user trên server theo username (không cần pass)
   static Future<Map<String, dynamic>?> getUserByUsername(String username) async {
     try {
       // 1) ưu tiên route lookup mới
       final lookupResponse = await http.get(
-        Uri.parse('$baseUrl/users/lookup/$username'),
+        Uri.parse('$baseUrl/users/$username'),
       );
 
       if (lookupResponse.statusCode == 200) {
@@ -125,8 +124,6 @@ class ApiService {
         return false;
       }
 
-      print('Server update failed status: ${response.statusCode}');
-      print('Response body: ${response.body}');
       return false;
     } catch (e) {
       print('Server update exception: $e');

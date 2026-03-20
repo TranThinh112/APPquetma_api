@@ -10,9 +10,9 @@
 import 'package:flutter/material.dart';
 import 'PhanLoai/PhanLoaiScreen.dart';
 import 'TraCuu/TraCuuScreen.dart';
-import 'data/order_dtb.dart';
+import 'Login/LoginScreen.dart';
+import 'QuanLy/QuanLyscreen.dart';
 import 'data/api_service.dart';
-import 'models/LoginScreen.dart';
 import 'Setting/SettingScreen.dart';
 import 'package:flutter/services.dart';
 Future<void> main() async{
@@ -182,6 +182,14 @@ class HomeScreen extends StatelessWidget {
                       Colors.purple[100]!,
                       Icons.folder,
                       "Quản lý đơn hàng",
+                      onTap: (){
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const QuanLyScreen(),
+                          ),
+                        );
+                      }
                     ),
                     // Ô màu vàng nhạt trống, không hiển thị icon/tiêu đề
                     buildCard(

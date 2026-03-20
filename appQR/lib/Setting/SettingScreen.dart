@@ -1,7 +1,7 @@
-import 'package:appqr1/models/LoginScreen.dart';
+import 'package:appqr1/Login/LoginScreen.dart';
 import 'package:flutter/material.dart';
 import '../main.dart';
-import '../models/LoginScreen.dart';
+import '../Login/LoginScreen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Map<String, dynamic> user;
