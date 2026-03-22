@@ -77,9 +77,10 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -150,11 +151,11 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                   SizedBox(height: 20),
                   Row(
                   children: [
-                    const Text(
+                    Text(
                       'Nhập mã đơn: ',
                       style: TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                     ),
                   ),
                   SizedBox(width: 220),
@@ -183,27 +184,40 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                       height: 200,
                       child:  TextField(
                         maxLines: 5,
-                        // minLines: null,
                         maxLength: 1000,
                         keyboardType: TextInputType.multiline,
                         textAlignVertical: TextAlignVertical.top,
+
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black, // chữ nhập
+                        ),
+
                         decoration: InputDecoration(
+                          hintText: "Nhập mã đơn...",
+                          hintStyle: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey,
+                          ),
+
+                          filled: true,
+                          fillColor: isDark ? Colors.grey[900] : Colors.white, // nền
+
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              width: 3,
-                              color: Colors.black,
+                              width: 2,
+                              color: isDark ? Colors.grey[600]! : Colors.black,
                             ),
                           ),
+
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              width: 3, // 👈 dày
-                              color: Colors.black,
+                              width: 2,
+                              color: Colors.orange, // giữ màu SPX
                             ),
                           ),
                         ),
-                      ),
+                      )
                     ),
                   ),
                   SizedBox(height: 2),

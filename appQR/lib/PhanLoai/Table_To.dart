@@ -136,8 +136,9 @@ class _CreatedTOState extends State<CreatedTO> {
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -246,7 +247,7 @@ class _CreatedTOState extends State<CreatedTO> {
                           ),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: isDark ? Colors.grey[850] : Colors.grey[50],
                       ),
                     ),
                   ),
@@ -307,6 +308,7 @@ class _CreatedTOState extends State<CreatedTO> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -318,6 +320,7 @@ class _CreatedTOState extends State<CreatedTO> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -329,6 +332,7 @@ class _CreatedTOState extends State<CreatedTO> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),

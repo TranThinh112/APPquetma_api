@@ -166,8 +166,9 @@ class _ScanTOState extends State<ScanTO> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -246,12 +247,12 @@ class _ScanTOState extends State<ScanTO> with SingleTickerProviderStateMixin {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Dữ liệu input ──
-                    const Text(
+                     Text(
                       'Dữ liệu input:',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -287,7 +288,7 @@ class _ScanTOState extends State<ScanTO> with SingleTickerProviderStateMixin {
                                 ),
                               ),
                               filled: true,
-                              fillColor: Colors.grey[50],
+                              fillColor: isDark ? Colors.grey[850] : Colors.grey[50],
                             ),
                           ),
                         ),
@@ -407,13 +408,13 @@ class _ScanTOState extends State<ScanTO> with SingleTickerProviderStateMixin {
 
                     // Label "Quét Mã"
                     const SizedBox(height: 10),
-                    const Center(
+                     Center(
                       child: Text(
                         'Quét Mã',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black54,
+                          color: isDark ? Colors.white70 : Colors.black54,
                         ),
                       ),
                     ),
@@ -428,7 +429,7 @@ class _ScanTOState extends State<ScanTO> with SingleTickerProviderStateMixin {
                         vertical: 14,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
+                        color: isDark ? Colors.grey[900] : Colors.grey[50],
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey[300]!),
                         boxShadow: [
@@ -447,10 +448,12 @@ class _ScanTOState extends State<ScanTO> with SingleTickerProviderStateMixin {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey[600],
+                              color: isDark ? Colors.white70 : Colors.grey[600],
                             ),
                           ),
-                          const SizedBox(height: 6),
+
+                          SizedBox(height: 6),
+
                           Text(
                             result.isEmpty
                                 ? 'Đưa camera vào mã để quét...'
@@ -461,8 +464,8 @@ class _ScanTOState extends State<ScanTO> with SingleTickerProviderStateMixin {
                                   ? FontWeight.normal
                                   : FontWeight.w600,
                               color: result.isEmpty
-                                  ? Colors.grey[400]
-                                  : Colors.black87,
+                                  ? (isDark ? Colors.grey[500] : Colors.grey[400])
+                                  : (isDark ? Colors.white : Colors.black87),
                             ),
                           ),
                         ],

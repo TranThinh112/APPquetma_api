@@ -24,6 +24,7 @@ import '../data/api_service.dart';
 import 'PhanLoaiScreen.dart';
 import 'package:flutter/foundation.dart';
 
+
 class ScannedItem {
   final String code;
   final DateTime timestamp;
@@ -538,8 +539,9 @@ class _CreateTOState extends State<CreateTO>
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Stack(
           children: [
@@ -630,18 +632,18 @@ class _CreateTOState extends State<CreateTO>
                           children: [
                             Text(
                               'TO ID: $toId',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                             Text(
                               'Số lượng: ${scannedCodes.length}/${TOModel.maxGoiHang}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                           ],
@@ -651,18 +653,18 @@ class _CreateTOState extends State<CreateTO>
                           children: [
                             Text(
                               'Sort: $station',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                             Text(
                               'Khối lượng: ${TongKhoiLuong.toStringAsFixed(2)}/${TOModel.maxWeight} kg',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                           ],
@@ -676,7 +678,7 @@ class _CreateTOState extends State<CreateTO>
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                           ],
@@ -686,12 +688,12 @@ class _CreateTOState extends State<CreateTO>
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Text(
+                             Text(
                               'Dữ liệu input:',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -840,13 +842,13 @@ class _CreateTOState extends State<CreateTO>
                           ),
                         ),
                         const SizedBox(height: 10),
-                        const Center(
+                         Center(
                           child: Text(
                             'Quét Mã',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black54,
+                              color: Theme.of(context).textTheme.bodyMedium?.color,
                             ),
                           ),
                         ),
@@ -882,7 +884,7 @@ class _CreateTOState extends State<CreateTO>
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
-                                      color: Colors.grey,
+                                      color: Colors.black,
                                     ),
                                   ),
                                   const SizedBox(height: 6),
@@ -902,8 +904,10 @@ class _CreateTOState extends State<CreateTO>
                                           child: Text(
                                             'Mã',
                                             style: TextStyle(
+                                              color: Colors.black,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
+
                                             ),
                                           ),
                                         ),
@@ -913,6 +917,7 @@ class _CreateTOState extends State<CreateTO>
                                             'Thời gian',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
+                                              color: Colors.black,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
                                             ),
@@ -924,6 +929,7 @@ class _CreateTOState extends State<CreateTO>
                                             'Khối lượng',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
+                                              color: Colors.black,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
                                             ),
@@ -942,7 +948,7 @@ class _CreateTOState extends State<CreateTO>
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           fontSize: 16,
-                                          color: Colors.grey[400],
+                                          color: Colors.black,
                                         ),
                                       ),
                                     )

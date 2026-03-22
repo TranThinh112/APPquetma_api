@@ -126,8 +126,9 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -228,7 +229,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                           ),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: isDark ? Colors.grey[900] : Colors.grey[50],
                       ),
                     ),
                   ),
@@ -275,13 +276,14 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                       TableRow(
                         decoration: BoxDecoration(color: Colors.orange[100]),
                         children: [
-                          const Padding(
+                           Padding(
                             padding: EdgeInsets.all(10),
                             child: Text(
                               'Mã Đơn',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -293,6 +295,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -304,6 +307,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -315,6 +319,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -326,6 +331,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -337,6 +343,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -348,6 +355,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Colors.black,
                               ),
                               textAlign: TextAlign.center,
                             ),
