@@ -51,16 +51,6 @@ class TODatabase {
     ''');
 
     // Bảng supplement: lưu danh sách chi tiết của mỗi gói hàng (tuỳ chọn)
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS to_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        maTO TEXT NOT NULL,
-        maGoiHang TEXT NOT NULL,
-        trongLuong REAL,
-        ngayThem TEXT,
-        FOREIGN KEY (maTO) REFERENCES transfer_orders(maTO)
-      )
-    ''');
 
     print('✓ Bảng transfer_orders tạo thành công');
   }

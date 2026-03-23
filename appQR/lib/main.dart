@@ -12,23 +12,14 @@ import 'PhanLoai/PhanLoaiScreen.dart';
 import 'TraCuu/TraCuuScreen.dart';
 import 'Login/LoginScreen.dart';
 import 'QuanLy/QuanLyscreen.dart';
+import 'TaoDon/TaoDonScreen.dart';
 import 'data/api_service.dart';
 import 'Setting/SettingScreen.dart';
 import 'package:flutter/services.dart';
+
+
 Future<void> main() async{
   WidgetsFlutterBinding.ensureInitialized();
-
-  //lấy data từ SQLlite
-  /*OrderDatabase.instance
-      .countOrders()
-      .then((count) {
-        debugPrint('Số lượng đơn hàng trong database: $count');
-      })
-      .catchError((e) {
-        debugPrint('Lỗi đếm orders: $e');
-      });*/
-  // Test API
-  // mở app ngay lập tức
   runApp(const MyApp());
 
   // gọi API chạy nền
@@ -196,6 +187,14 @@ class HomeScreen extends StatelessWidget {
                       Colors.yellow[100]!,
                       Icons.add_box,
                      "Tạo đơn ",
+                        onTap: (){
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TaoDonScreen(),
+                            ),
+                          );
+                        }
                     ),
                   ],
                 ),

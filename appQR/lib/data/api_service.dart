@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../QuanLy/QuanLyscreen.dart';
 
 class ApiService {
 
@@ -33,75 +34,57 @@ class ApiService {
     throw Exception("Failed to load orders");
     return null;
   }
-  
-  // tìm user theo ID
-  static Future<Map<String, dynamic>?> getUsers(String username, String password) async {
-
+  //ấy dữ liệu cho page quản lý
+  static Future<List<OrderModel>> getOrderQL() async {
     final response = await http.get(
-      Uri.parse("$baseUrl/users/$username/$password"),
+      Uri.parse("$baseUrl/orders"),
     );
 
+    print("STATUS: ${response.statusCode}");
+
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      // ✅ FIX CHUẨN 2 TRƯỜNG HỢP
-      if (data == null) return null;
-      // nếu backend trả object
-      if (data is Map<String, dynamic>) {
-        return data;
-      }
-      // nếu backend trả list
-      if (data is List && data.isNotEmpty) {
-        return data[0];
-      }
+      final List data = jsonDecode(response.body);
 
-      return null;
+      return data.map((e) => OrderModel.fromJson(e)).toList();
     }
-    print("RESPONSE: ");
-    print(response.body);
-    return null;
-  }
-  /// Tìm user trên server theo username (không cần pass)
-  static Future<Map<String, dynamic>?> getUserByUsername(String username) async {
-    try {
-      // 1) ưu tiên route lookup mới
-      final lookupResponse = await http.get(
-        Uri.parse('$baseUrl/users/$username'),
-      );
 
-      if (lookupResponse.statusCode == 200) {
-        final data = jsonDecode(lookupResponse.body);
-        if (data is Map<String, dynamic> && data.isNotEmpty) {
+    throw Exception("Failed to load orders");
+  }
+  // tìm user theo ID
+  static Future<Map<String, dynamic>?> getUser(
+      String username, {
+        String? password,
+      }) async {
+    try {
+      // 🔥 build URL theo trường hợp
+      String url = "$baseUrl/users/$username";
+
+      // 🔐 nếu có password → login
+      if (password != null && password.isNotEmpty) {
+        url += "/$password";
+      }
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data == null) return null;
+
+        // nếu backend trả object
+        if (data is Map<String, dynamic>) {
           return data;
         }
-      }
 
-      // 2) thử route /users/:username nếu có
-      final byNameResponse = await http.get(Uri.parse('$baseUrl/users/$username'));
-      if (byNameResponse.statusCode == 200) {
-        final data2 = jsonDecode(byNameResponse.body);
-        if (data2 is Map<String, dynamic> && data2.isNotEmpty) {
-          return data2;
+        // nếu backend trả list
+        if (data is List && data.isNotEmpty) {
+          return data[0];
         }
       }
-
-      // 3) fallback chung nếu backend chưa có /users/lookup hoặc /users/:username
-      final allResponse = await http.get(Uri.parse('$baseUrl/users'));
-      if (allResponse.statusCode == 200) {
-        final all = jsonDecode(allResponse.body);
-        if (all is List) {
-          final user = all.cast<Map<String, dynamic>>().firstWhere(
-                (item) => item['username']?.toString().toLowerCase() == username.toLowerCase(),
-                orElse: () => {},
-              );
-          if (user.isNotEmpty) {
-            return user;
-          }
-        }
-      }
-
+      print("RESPONSE: ${response.body}");
       return null;
     } catch (e) {
-      print('Server getUserByUsername exception: $e');
+      print("getUser error: $e");
       return null;
     }
   }

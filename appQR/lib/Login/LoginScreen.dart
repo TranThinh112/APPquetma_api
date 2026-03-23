@@ -47,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
     // 2) Fallback API
-    final user = await ApiService.getUsers(uName, pass);
+    final user = await ApiService.getUser(uName, password: pass);
 
     if (user != null) {
       Navigator.pushReplacementNamed(
@@ -73,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final localUser = await ApiService.getUserByUsername(uName);
+      final localUser = await ApiService.getUser(uName);
       var user = localUser;
 
       //  tìm trên server
