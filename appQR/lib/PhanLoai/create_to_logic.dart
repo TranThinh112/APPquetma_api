@@ -201,11 +201,11 @@ class CreateTOLogic {
     }
   }
 
-  /// Kiểm tra mã đơn hàng đã nằm trong TO nào chưa (trừ TO hiện tại)
+  /// Kiểm tra mã đơn hàng đã nằm trong TO nào chưa (trừ TO hiện tại) bằng dữ liệu server
   Future<String?> _isCodeInAnyTO(String code) async {
-    if (kIsWeb) return null;
     try {
-      final allTOs = await TODatabase.instance.getAllTOs();
+      final serverData = await ApiService.getAllTOsFromServer();
+      final allTOs = serverData.map((e) => TOModel.fromJson(e)).toList();
       for (final to in allTOs) {
         if (to.maTO == toId) continue; // Bỏ qua TO hiện tại
         if (to.danhSachGoiHang.contains(code)) {
@@ -213,23 +213,18 @@ class CreateTOLogic {
         }
       }
     } catch (e) {
-      print('⚠️ Lỗi kiểm tra trùng: $e');
+      debugPrint('Lỗi kiểm tra trùng từ server: $e');
     }
     return null;
   }
 
-  /// Xóa TO khỏi database + server
+  /// Xóa TO khỏi server
   Future<void> _deleteTOFromDatabase() async {
-    if (kIsWeb) return;
     try {
-      await TODatabase.instance.deleteTO(toId);
-      // Chỉ xóa trên server nếu TO này đã từng được đưa lên (Packed)
-      if (originalStatus == 'Packed') {
-        await ApiService.deleteTOOnServer(toId);
-      }
-      print('✓ TO $toId đã xóa (không còn đơn hàng)');
+      await ApiService.deleteTOOnServer(toId);
+      debugPrint('TO $toId đã xóa (không còn đơn hàng)');
     } catch (e) {
-      print('⚠️ Lỗi xóa TO: $e');
+      debugPrint('Lỗi xóa TO: $e');
     }
   }
 
@@ -237,21 +232,15 @@ class CreateTOLogic {
   Future<bool> completeTO() async {
     if (scannedCodes.isEmpty) return false;
 
-    final wasPacked = (originalStatus == 'Packed');
+    // final wasPacked = (originalStatus == 'Packed'); // Không cần thiết nữa vì mọi thứ đã đồng bộ lưu trên server
 
     originalStatus = 'Packed';
     // Chỉ set completedAt một lần khi đóng lần đầu
     completedAt ??= DateTime.now();
 
     final toComplete = _buildTOModel();
-    await _updateDatabase(toComplete);
+    await _updateTOInDatabase(); // Chạy thẳng lệnh Update lên server
     
-    // Push lên API server — Nếu đã Packed thì update (PUT), ngược lại tạo mới (POST)
-    if (wasPacked) {
-      await ApiService.updateTOOnServer(toComplete);
-    } else {
-      await _pushTOToServer(toComplete);
-    }
     return true;
   }
 
@@ -271,47 +260,23 @@ class CreateTOLogic {
   }
 
   Future<void> _saveTOToDatabase({bool isNew = false}) async {
-    if (kIsWeb) return;
     try {
       if (isNew) {
-        await TODatabase.instance.addTO(_buildTOModel());
+        await ApiService.uploadTO(_buildTOModel());
       } else {
-        await TODatabase.instance.updateTO(_buildTOModel());
+        await ApiService.updateTOOnServer(_buildTOModel());
       }
     } catch (e) {
-      print("⚠️ Lỗi SQLite: $e");
+      debugPrint("Lỗi upload tạo TO: $e");
     }
   }
 
   Future<void> _updateTOInDatabase() async {
-    if (kIsWeb) return;
     try {
       final model = _buildTOModel();
-      await TODatabase.instance.updateTO(model);
-      // CHỈ đồng bộ lên server nếu TO đã ĐÓNG (Packed)
-      if (model.trangThai == 'Packed') {
-        await ApiService.updateTOOnServer(model);
-      }
+      await ApiService.updateTOOnServer(model);
     } catch (e) {
-      print("⚠️ Lỗi SQLite: $e");
-    }
-  }
-
-  Future<void> _updateDatabase(TOModel to) async {
-    if (kIsWeb) return;
-    try {
-      await TODatabase.instance.updateTO(to);
-    } catch (e) {
-      print("⚠️ Lỗi SQLite: $e");
-    }
-  }
-
-  /// Push TO lên API server (bảng TO_orders)
-  Future<void> _pushTOToServer(TOModel to) async {
-    try {
-      await ApiService.uploadTO(to);
-    } catch (e) {
-      print("⚠️ Lỗi push TO lên server: $e");
+      debugPrint("Lỗi update thay đổi: $e");
     }
   }
 }

@@ -15,10 +15,11 @@ class TableTOLogic {
   bool isDeleteMode = false;
   final Set<String> selectedTOs = {};
 
-  /// Load tất cả TO từ database
+  /// Load tất cả TO từ server
   Future<void> refreshList() async {
     try {
-      allTOs = await TODatabase.instance.getAllTOs();
+      final serverData = await ApiService.getAllTOsFromServer();
+      allTOs = serverData.map((e) => TOModel.fromJson(e)).toList();
       filteredList = _filterByKeyword(allTOs, '');
     } catch (e) {
       debugPrint('Error refreshing list: $e');
@@ -52,10 +53,9 @@ class TableTOLogic {
     }
   }
 
-  /// Xóa tất cả TO đã chọn (local + server)
+  /// Xóa tất cả TO đã chọn trên server
   Future<void> deleteSelectedTOs() async {
     for (final maTO in selectedTOs) {
-      await TODatabase.instance.deleteTO(maTO);
       await ApiService.deleteTOOnServer(maTO);
     }
     selectedTOs.clear();
