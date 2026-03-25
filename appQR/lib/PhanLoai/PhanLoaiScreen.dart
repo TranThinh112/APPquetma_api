@@ -6,9 +6,9 @@
 ///        3. Created TO → Xem danh sách bao hàng đã tạo
 /// =============================================================
 import 'package:flutter/material.dart';
-import 'Scan_TO.dart';
-import 'Table_To.dart';
-import 'Create_TO.dart';
+import 'scan_to_screen.dart';
+import 'table_to_screen.dart';
+import 'create_to_screen.dart';
 
 
 class PhanLoaiScreen extends StatelessWidget {
@@ -38,7 +38,7 @@ class PhanLoaiScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => CreateTO(user: user),
+                            builder: (context) => CreateTOScreen(user: user),
                           ),
                         );
                       },
@@ -51,7 +51,7 @@ class PhanLoaiScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const ScanTO(),
+                            builder: (context) => const ScanTOScreen(),
                           ),
                         );
                       },
@@ -64,7 +64,7 @@ class PhanLoaiScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const CreatedTO(),
+                            builder: (context) => TableTOScreen(user: user),
                           ),
                         );
                       },

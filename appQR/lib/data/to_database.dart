@@ -30,8 +30,6 @@ class TODatabase {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    print("TO Database path: $path");
-
     return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
@@ -51,8 +49,6 @@ class TODatabase {
     ''');
 
     // Bảng supplement: lưu danh sách chi tiết của mỗi gói hàng (tuỳ chọn)
-
-    print('✓ Bảng transfer_orders tạo thành công');
   }
 
   /// Thêm TO mới
@@ -69,8 +65,6 @@ class TODatabase {
       'completeTime': to.completeTime?.toIso8601String(),
       'totalWeight': to.totalWeight,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-
-    print('✓ Đã thêm TO: ${to.maTO}');
   }
 
   /// Lấy TO theo mã
@@ -164,8 +158,6 @@ class TODatabase {
       where: 'maTO = ?',
       whereArgs: [to.maTO],
     );
-
-    print('✓ Cập nhật TO: ${to.maTO}');
   }
 
   /// Xóa TO
@@ -173,8 +165,6 @@ class TODatabase {
     final db = await instance.database;
 
     await db.delete('transfer_orders', where: 'maTO = ?', whereArgs: [maTO]);
-
-    print('✓ Xóa TO: $maTO');
   }
 
   /// Tìm kiếm TO theo từ khóa
@@ -223,6 +213,5 @@ class TODatabase {
   Future<void> deleteAllTOs() async {
     final db = await instance.database;
     await db.delete('transfer_orders');
-    print('✓ Xóa hết tất cả TO');
   }
 }

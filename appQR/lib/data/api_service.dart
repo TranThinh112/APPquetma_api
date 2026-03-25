@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../QuanLy/QuanLyscreen.dart';
+import '../models/to_model.dart';
 
 class ApiService {
 
@@ -12,7 +13,6 @@ class ApiService {
     final response = await http.get(
       Uri.parse("$baseUrl/orders"),
     );
-    print("STATUS: ${response.statusCode}");
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -31,7 +31,6 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
-    throw Exception("Failed to load orders");
     return null;
   }
   //ấy dữ liệu cho page quản lý
@@ -39,8 +38,6 @@ class ApiService {
     final response = await http.get(
       Uri.parse("$baseUrl/orders"),
     );
-
-    print("STATUS: ${response.statusCode}");
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -114,4 +111,105 @@ class ApiService {
     }
   }
 
+  // ═══════════════════════════════════════════
+  // TO_orders — Push TO lên server
+  // ═══════════════════════════════════════════
+
+  /// Upload 1 TO lên server (bảng TO_orders)
+  static Future<bool> uploadTO(TOModel to) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/TO_orders'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': to.maTO, // Truyền luôn id = maTO để json-server dễ quản lý
+          'maTO': to.maTO,
+          'danhSachGoiHang': to.danhSachGoiHang.join(','),
+          'diaDiemGiaoHang': to.diaDiemGiaoHang,
+          'trangThai': to.trangThai,
+          'packer': to.packer,
+          'ngayTao': to.ngayTao.toIso8601String(),
+          'completeTime': to.completeTime?.toIso8601String(),
+          'totalWeight': to.totalWeight,
+        }),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('❌ Upload TO error: $e');
+      return false;
+    }
+  }
+
+  /// Cập nhật TO trên server
+  static Future<bool> updateTOOnServer(TOModel to) async {
+    try {
+      // 1. Tìm id thật sự của TO này trên server (vì json-server tự tạo id)
+      final getResp = await http.get(Uri.parse('$baseUrl/TO_orders?maTO=${to.maTO}'));
+      if (getResp.statusCode != 200) return false;
+      
+      final List data = jsonDecode(getResp.body);
+      if (data.isEmpty) return false; // Không tìm thấy trên server
+      
+      final serverId = data.first['id'];
+
+      // 2. Gửi request PUT bằng id thật
+      final response = await http.put(
+        Uri.parse('$baseUrl/TO_orders/$serverId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': serverId,
+          'maTO': to.maTO,
+          'danhSachGoiHang': to.danhSachGoiHang.join(','),
+          'diaDiemGiaoHang': to.diaDiemGiaoHang,
+          'trangThai': to.trangThai,
+          'packer': to.packer,
+          'ngayTao': to.ngayTao.toIso8601String(),
+          'completeTime': to.completeTime?.toIso8601String(),
+          'totalWeight': to.totalWeight,
+        }),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('❌ Update TO error: $e');
+      return false;
+    }
+  }
+
+  /// Lấy tất cả TO từ server
+  static Future<List<Map<String, dynamic>>> getAllTOsFromServer() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/TO_orders'));
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('❌ Get TOs error: $e');
+      return [];
+    }
+  }
+
+  /// Xóa TO trên server
+  static Future<bool> deleteTOOnServer(String maTO) async {
+    try {
+      // 1. Tìm id thật sự của TO này trên server
+      final getResp = await http.get(Uri.parse('$baseUrl/TO_orders?maTO=$maTO'));
+      if (getResp.statusCode != 200) return false;
+      
+      final List data = jsonDecode(getResp.body);
+      if (data.isEmpty) return true; // Đã bị xóa từ trước
+      
+      final serverId = data.first['id'];
+
+      // 2. Gửi lệnh xóa theo id
+      final response = await http.delete(
+        Uri.parse('$baseUrl/TO_orders/$serverId'),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('❌ Delete TO error: $e');
+      return false;
+    }
+  }
 }

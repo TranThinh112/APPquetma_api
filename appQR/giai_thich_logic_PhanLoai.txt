@@ -1,0 +1,227 @@
+# ===================================================================
+# GIẢI THÍCH CHI TIẾT LOGIC TỪNG FILE - Chức năng Phân Loại (PhanLoai)
+# ===================================================================
+# File này giải thích CHI TIẾT cho người mới hoặc người muốn hiểu
+# rõ hơn code trong thư mục PhanLoai/.
+# Trong code thì comment ngắn gọn, file này giải thích dài.
+# ===================================================================
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 1. create_to_logic.dart — Logic tạo bao hàng (Create TO)
+# ═══════════════════════════════════════════════════════════════════
+
+## ScannedItem (class)
+- Là "model" = mô hình dữ liệu đại diện cho 1 đơn hàng đã quét.
+- Gồm 3 thuộc tính:
+  + code     : Mã đơn hàng (ví dụ: SPXVN0612345678)
+  + timestamp: Thời gian quét (DateTime = kiểu dữ liệu ngày/giờ)
+  + weight   : Trọng lượng (kg) của đơn hàng
+
+## ScanResult (enum)
+- "enum" = danh sách các kết quả cố định. Tức là khi quét 1 mã,
+  kết quả chỉ có thể rơi vào 1 trong các trường hợp sau:
+  + success        : Quét thành công, thêm vào danh sách
+  + empty          : Mã trống (không có gì để xử lý)
+  + invalidFormat  : Sai định dạng (phải là SPXVN06 + 8-10 chữ số)
+  + duplicate      : Trùng mã (đã quét rồi, không quét lại)
+  + notFound       : Không tìm thấy trên server (mã không tồn tại)
+  + wrongStation   : Sai trạm (mã đơn này đi trạm khác, không nằm cùng TO)
+  + maxItems       : Đạt tối đa 5 kiện trong 1 bao
+  + autoComplete   : Vừa đủ 10kg hoặc 5/5 → tự động đóng TO
+  + overWeightNewTO: Vượt 10kg → đóng TO cũ + TẠO TO MỚI + nhét đơn vào TO mới
+    (VÍ DỤ: TO đang 8kg, đơn tiếp theo 3kg = 11kg > 10kg
+     → đóng TO cũ 8kg → tạo TO mới → nhét đơn 3kg vào TO mới)
+
+## CreateTOLogic (class chính)
+- Quản lý toàn bộ state (trạng thái) và logic xử lý.
+
+### Thuộc tính (state):
+  - scannedCodes   : Danh sách các mã đã quét (List<ScannedItem>)
+  - tongKhoiLuong  : Tổng trọng lượng hiện tại (đơn vị: kg)
+  - station        : Trạm giao hàng (lấy từ đơn hàng đầu tiên)
+  - _stationBanDau : Station gốc (private, dùng nội bộ để so sánh)
+  - toId           : Mã TO (ví dụ: TO260325AB1X)
+  - packer         : Tên người đóng gói (lấy từ user login)
+  - originalStatus : Trạng thái TO ("Packing" hoặc "Packed")
+  - createdAt      : Thời gian tạo TO
+  - completedAt    : Thời gian hoàn thành (null nếu chưa xong)
+
+### Hàm (function/method):
+
+  _generateTOId()
+  → Tự tạo mã TO. Format: TO + yyMMdd (ngày) + 4 ký tự ngẫu nhiên.
+  → Ví dụ: TO260325XK9P (ngày 25/03/2026 + random XK9P)
+
+  isValidSPX(code)
+  → "Validate" = KIỂM TRA HỢP LỆ.
+  → Kiểm tra mã có đúng format SPXVN06 + 8-10 chữ số hay không.
+  → Ví dụ hợp lệ: SPXVN0612345678
+  → Ví dụ sai: ABC12345, SPXVN051234
+
+  processCode(code) — HÀM CHÍNH
+  → Xử lý 1 mã đơn hàng (quét camera hoặc nhập tay).
+  → Quy trình kiểm tra theo thứ tự:
+    1. Mã trống? → return empty
+    2. Sai format? → return invalidFormat
+    3. Đã quét rồi? → return duplicate
+    4. Gọi API tìm đơn → không tìm thấy? → return notFound
+    5. Station khác? → return wrongStation
+    6. Vượt 10kg? → return overWeight
+    7. Đủ 5 kiện? → return maxItems
+    8. OK → thêm vào list → lưu DB → return success hoặc autoComplete
+
+  removeItem(index)
+  → Xóa 1 đơn hàng khỏi danh sách theo vị trí (index).
+  → Đồng thời trừ trọng lượng và cập nhật database.
+
+  completeTO()
+  → "Complete" = HOÀN THÀNH bao hàng.
+  → Đổi trạng thái sang "Packed", ghi thời gian hoàn thành.
+  → Lưu vào SQLite local + push lên API server (bảng TO_orders).
+
+  _pushTOToServer(to)
+  → Gọi ApiService.uploadTO() để gửi dữ liệu TO lên server.
+  → Server lưu vào bảng TO_orders.
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 2. create_to_screen.dart — UI giao diện tạo bao hàng
+# ═══════════════════════════════════════════════════════════════════
+
+- File này CHỈ chứa giao diện (UI), KHÔNG xử lý logic.
+- Sử dụng CreateTOLogic để gọi hàm xử lý.
+- Khi camera quét được mã → gọi logic.processCode() → nhận ScanResult
+  → dựa vào kết quả để hiển thị thông báo phù hợp.
+
+### Tối ưu quét mã:
+  - DetectionSpeed.unrestricted : Camera quét liên tục, không chờ frame
+    (trước đây dùng "normal" = chậm hơn)
+  - Delay 200ms : Chống quét trùng liên tục
+    (trước đây 600ms = chậm gần gấp 3)
+  - Beep NGAY : Phát âm thanh ngay khi quét thành công
+    (trước đây phát sau animation = chậm)
+  - Cache audio : Load sẵn file beep.mp3 lúc khởi tạo
+    (lần phát đầu tiên sẽ nhanh hơn)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 3. scan_to_logic.dart — Logic quét mã bao hàng (Scan TO)
+# ═══════════════════════════════════════════════════════════════════
+
+## ScanTOResult (enum)
+- Kết quả quét mã TO:
+  + success       : Quét thành công
+  + empty          : Mã trống
+  + duplicate      : Trùng mã vừa quét
+  + invalidFormat  : Sai format mã TO
+
+## ScanTOLogic (class)
+  isValidTO(code)
+  → Validate mã TO. Format: TO + 6 chữ số (ngày) + 4 ký tự chữ/số.
+  → Ví dụ hợp lệ: TO260325AB1X
+  → Regex: ^TO\d{6}[A-Z0-9]{4}$
+  → Trước đây hardcode TO2603 (chỉ đúng 1 ngày), giờ linh hoạt hơn.
+
+  processCode(code, codeType)
+  → Xử lý mã quét: kiểm tra trống → trùng → format → trả kết quả.
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 4. scan_to_screen.dart — UI giao diện quét mã bao hàng
+# ═══════════════════════════════════════════════════════════════════
+
+- CHỈ chứa UI. Dùng ScanTOLogic để xử lý.
+- Cùng tối ưu quét mã như Create TO (unrestricted, 200ms, beep ngay).
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 5. table_to_logic.dart — Logic danh sách bao hàng (Table TO)
+# ═══════════════════════════════════════════════════════════════════
+
+## TableTOLogic (class)
+
+### Thuộc tính:
+  - allTOs       : Tất cả TO trong database
+  - filteredList : Danh sách sau khi lọc (search)
+  - isDeleteMode : Đang ở chế độ xóa hay không (true/false)
+  - selectedTOs  : Danh sách mã TO đã chọn để xóa
+
+### Hàm:
+  refreshList()
+  → Load tất cả TO từ SQLite database.
+
+  search(keyword)
+  → Lọc danh sách theo từ khóa (tìm mã TO).
+
+  toggleSelect(maTO)
+  → "Toggle" = BẬT/TẮT. Chọn hoặc bỏ chọn 1 TO để xóa.
+
+  deleteSelectedTOs()
+  → Xóa tất cả TO đã chọn khỏi database.
+
+  formatTime(time)
+  → Format = ĐỊNH DẠNG. Chuyển DateTime thành chuỗi dễ đọc.
+  → Ví dụ: DateTime(2026, 3, 25, 13, 30) → "26/3/25 13:30"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 6. table_to_screen.dart — UI giao diện danh sách bao hàng
+# ═══════════════════════════════════════════════════════════════════
+
+- CHỈ chứa UI. Dùng TableTOLogic để xử lý dữ liệu.
+- Bảng hiển thị: Mã TO, Số lượng, Sort, Trạng thái, KG, Packer,
+  Create time, Complete time, nút Sửa.
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 7. api_service.dart — Gọi API lên server
+# ═══════════════════════════════════════════════════════════════════
+
+- File này CHỈ chứa các hàm gọi API (HTTP request).
+- KHÔNG xử lý logic business, KHÔNG động tới database local.
+
+### Các hàm liên quan TO_orders (MỚI THÊM):
+  uploadTO(to)
+  → Gửi 1 TO lên server bằng HTTP POST.
+  → URL: baseUrl/TO_orders
+  → Server lưu vào bảng TO_orders (Thịnh đã tạo sẵn).
+
+  updateTOOnServer(to)
+  → Cập nhật 1 TO trên server bằng HTTP PUT.
+  → URL: baseUrl/TO_orders/{maTO}
+
+  getAllTOsFromServer()
+  → Lấy tất cả TO từ server bằng HTTP GET.
+  → URL: baseUrl/TO_orders
+
+
+# ═══════════════════════════════════════════════════════════════════
+# THUẬT NGỮ THƯỜNG GẶP
+# ═══════════════════════════════════════════════════════════════════
+
+  validate   = Kiểm tra hợp lệ (dữ liệu có đúng format không)
+  callback   = Hàm gọi lại (UI gọi logic, logic "gọi lại" UI khi xong)
+  model      = Mô hình dữ liệu (class đại diện cho 1 loại dữ liệu)
+  enum       = Danh sách giá trị cố định (kết quả chỉ là 1 trong N loại)
+  state      = Trạng thái (dữ liệu hiện tại tại thời điểm chạy)
+  async/await= Bất đồng bộ (chờ API trả về rồi mới tiếp tục)
+  Future     = Kết quả trả về trong tương lai (dùng với async)
+  Widget     = Thành phần giao diện trong Flutter (nút, text, hình...)
+  StatefulWidget = Widget có state thay đổi được (bấm nút → đổi giao diện)
+  setState   = Thông báo Flutter vẽ lại giao diện khi state thay đổi
+  Navigator  = Điều hướng giữa các màn hình (push = mở, pop = quay lại)
+  SQLite     = Database local trên điện thoại (lưu offline)
+  API        = Giao diện lập trình ứng dụng (gọi server qua internet)
+  HTTP POST  = Gửi dữ liệu lên server
+  HTTP GET   = Lấy dữ liệu từ server
+  HTTP PUT   = Cập nhật dữ liệu trên server
+  regex      = Biểu thức chính quy (kiểm tra format chuỗi ký tự)
+  singleton  = Chỉ tạo 1 instance duy nhất (dùng chung toàn app)
+  toggle     = Bật/tắt (ấn 1 lần bật, ấn lần nữa tắt)
+  parse      = Phân tích chuỗi thành kiểu dữ liệu khác
+  format     = Định dạng (chuyển dữ liệu thành chuỗi hiển thị)
+  cache      = Lưu sẵn (load trước để dùng nhanh hơn)
+  dispose    = Giải phóng bộ nhớ (gọi khi không dùng nữa)
+  mounted    = Widget còn đang hiển thị hay không
+  index      = Vị trí trong danh sách (bắt đầu từ 0)
