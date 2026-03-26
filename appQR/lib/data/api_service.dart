@@ -140,24 +140,13 @@ class ApiService {
     }
   }
 
-  /// Cập nhật TO trên server
+  /// Cập nhật TO trên server (dùng maTO làm ID)
   static Future<bool> updateTOOnServer(TOModel to) async {
     try {
-      // 1. Tìm id thật sự của TO này trên server (vì json-server tự tạo id)
-      final getResp = await http.get(Uri.parse('$baseUrl/TO_orders?maTO=${to.maTO}'));
-      if (getResp.statusCode != 200) return false;
-      
-      final List data = jsonDecode(getResp.body);
-      if (data.isEmpty) return false; // Không tìm thấy trên server
-      
-      final serverId = data.first['id'];
-
-      // 2. Gửi request PUT bằng id thật
       final response = await http.put(
-        Uri.parse('$baseUrl/TO_orders/$serverId'),
+        Uri.parse('$baseUrl/TO_orders/${to.maTO}'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'id': serverId,
           'maTO': to.maTO,
           'danhSachGoiHang': to.danhSachGoiHang.join(','),
           'diaDiemGiaoHang': to.diaDiemGiaoHang,
@@ -190,21 +179,11 @@ class ApiService {
     }
   }
 
-  /// Xóa TO trên server
+  /// Xóa TO trên server (dùng maTO làm ID)
   static Future<bool> deleteTOOnServer(String maTO) async {
     try {
-      // 1. Tìm id thật sự của TO này trên server
-      final getResp = await http.get(Uri.parse('$baseUrl/TO_orders?maTO=$maTO'));
-      if (getResp.statusCode != 200) return false;
-      
-      final List data = jsonDecode(getResp.body);
-      if (data.isEmpty) return true; // Đã bị xóa từ trước
-      
-      final serverId = data.first['id'];
-
-      // 2. Gửi lệnh xóa theo id
       final response = await http.delete(
-        Uri.parse('$baseUrl/TO_orders/$serverId'),
+        Uri.parse('$baseUrl/TO_orders/$maTO'),
       );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {

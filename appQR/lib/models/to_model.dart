@@ -37,5 +37,41 @@ class TOModel {
   int get soLuongDonHang => danhSachGoiHang.length;
 
   static const int maxGoiHang = 5; // Tối đa 5 kiện hàng
-  static const double maxWeight = 10.0; // Tối đa 1bvcvbgnjm nbvc0 KG
+  static const double maxWeight = 10.0; // Tối đa 10 KG
+
+  factory TOModel.fromJson(Map<String, dynamic> json) {
+    var rawDsg = json['danhSachGoiHang'];
+    List<String> listGoiHang = [];
+    if (rawDsg is String) {
+      // Server lưu dạng chuỗi, có thể bị bọc thêm dấu ngoặc kép → loại bỏ
+      String cleaned = rawDsg.replaceAll('"', '').trim();
+      listGoiHang = cleaned.isEmpty ? [] : cleaned.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    } else if (rawDsg is List) {
+      listGoiHang = List<String>.from(rawDsg);
+    }
+
+    return TOModel(
+      maTO: json['maTO'] ?? '',
+      danhSachGoiHang: listGoiHang,
+      diaDiemGiaoHang: json['diaDiemGiaoHang'] ?? '',
+      trangThai: json['trangThai'] ?? 'Packing',
+      packer: json['packer'] ?? '',
+      totalWeight: (json['totalWeight'] ?? 0.0).toDouble(),
+      ngayTao: json['ngayTao'] != null ? DateTime.tryParse(json['ngayTao'].toString()) : null,
+      completeTime: json['completeTime'] != null ? DateTime.tryParse(json['completeTime'].toString()) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'maTO': maTO,
+      'danhSachGoiHang': danhSachGoiHang,
+      'diaDiemGiaoHang': diaDiemGiaoHang,
+      'trangThai': trangThai,
+      'packer': packer,
+      'totalWeight': totalWeight,
+      'ngayTao': ngayTao.toIso8601String(),
+      'completeTime': completeTime?.toIso8601String(),
+    };
+  }
 }
