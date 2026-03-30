@@ -132,6 +132,7 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Stack(
           children: [
+            SizedBox(height: 50),
             // Grid menu - centered on full screen
             Center(
               child: Padding(
@@ -206,10 +207,10 @@ class HomeScreen extends StatelessWidget {
               width: double.infinity,
               height: 150,
               decoration: BoxDecoration(
-                color: Colors.orange[700],
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
+                color: Colors.orange[600],
+                borderRadius:const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
                 ),
               ),
               child: Stack(
@@ -218,12 +219,12 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.inventory_2, size: 55, color: Colors.white),
+                        Icon(Icons.inventory_2, size: 50, color: Colors.white),
                         SizedBox(height: 8),
                         Text(
                           'SPX Express',
                           style: TextStyle(
-                            fontSize: 36,
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             letterSpacing: 1.5,
@@ -245,7 +246,6 @@ class HomeScreen extends StatelessWidget {
                         final createdAt = rawCreatedAt.isNotEmpty
                             ? (DateTime.tryParse(rawCreatedAt)?.toLocal().toString().split('.').first ?? rawCreatedAt)
                             : 'Chưa xác định';
-
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
@@ -272,7 +272,6 @@ class HomeScreen extends StatelessWidget {
                       child: CircleAvatar(
                         radius: 20,
                         backgroundColor: Colors.white.withOpacity(0.25),
-
                         child: const Icon(Icons.person, color: Colors.white),
                       ),
                     ),

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../QuanLy/QuanLyscreen.dart';
 import '../models/to_model.dart';
-
+import '../models/Oders_model.dart';
 class ApiService {
 
   static const String baseUrl = "https://server-production-fdce.up.railway.app";
@@ -13,7 +13,6 @@ class ApiService {
     final response = await http.get(
       Uri.parse("$baseUrl/orders"),
     );
-
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
@@ -47,6 +46,45 @@ class ApiService {
 
     throw Exception("Failed to load orders");
   }
+  //lay don theo trang thai
+  static Future<List<Map<String, dynamic>>> getStatusOrders(String trangThai) async{
+    final response = await http.get(
+        Uri.parse("$baseUrl/orders/status/trangThai"),
+    );
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>(); //
+    }
+    return [];
+  }
+  //upload trang thai don hang
+  static Future<bool> updateOrderField(String code, String field, String value) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/orders/$code/$field/${Uri.encodeComponent(value)}',
+      );
+      final response = await http.put(uri);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Update error: $e');
+      return false;
+    }
+  }
+  // update trạng thái
+  // update trạng thái
+  static Future<bool> updatStatusOrders(String code, String status) {
+    return updateOrderField(code, "status", status);
+    //https://server-production-fdce.up.railway.app/orders/SPXVN06104737773/status/Inbound
+  }
+
+// update time scan
+  static Future<bool> updateTimeScanOrders(String code, String time) {
+    return updateOrderField(code, "timedong", time);
+    // https://server-production-fdce.up.railway.app/orders/SPXVN06104737773/timedong/2026-03-23 18:35:47
+
+  }
+
+    //////////////     USER ////////////////
   // tìm user theo ID
   static Future<Map<String, dynamic>?> getUser(
       String username, {
@@ -54,7 +92,7 @@ class ApiService {
       }) async {
     try {
       // 🔥 build URL theo trường hợp
-      String url = "$baseUrl/users/$username";
+      String url = "$baseUrl/login/users/$username";
 
       // 🔐 nếu có password → login
       if (password != null && password.isNotEmpty) {
@@ -90,7 +128,7 @@ class ApiService {
   static Future<bool> updateUserPasswordOnServer(String username, String newPassword) async {
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/users/$username'),
+        Uri.parse('$baseUrl/login/users/$username'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'password': newPassword}),
       );
@@ -112,9 +150,8 @@ class ApiService {
   }
 
   // ═══════════════════════════════════════════
-  // TO_orders — Push TO lên server
+      //////////////// TO_orders — Push TO lên server /////////////////////////////////////////
   // ═══════════════════════════════════════════
-
   /// Upload 1 TO lên server (bảng TO_orders)
   static Future<bool> uploadTO(TOModel to) async {
     try {
@@ -135,13 +172,12 @@ class ApiService {
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('❌ Upload TO error: $e');
       return false;
     }
   }
 
   /// Cập nhật TO trên server (dùng maTO làm ID)
-  static Future<bool> updateTOOnServer(TOModel to) async {
+  static Future<bool> updateTO(TOModel to) async {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/TO_orders/${to.maTO}'),
@@ -159,7 +195,6 @@ class ApiService {
       );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('❌ Update TO error: $e');
       return false;
     }
   }
@@ -174,11 +209,19 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('❌ Get TOs error: $e');
       return [];
     }
   }
 
+  //lay To theo trang tahi
+static Future<List<Map<String, dynamic>>> getTOStatus (String trangThai) async{
+    final response = await http.get(Uri.parse("$baseUrl/TO_orders/status/$trangThai"));
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>(); //
+    }
+    return [];
+}
   /// Xóa TO trên server (dùng maTO làm ID)
   static Future<bool> deleteTOOnServer(String maTO) async {
     try {
@@ -187,7 +230,6 @@ class ApiService {
       );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('❌ Delete TO error: $e');
       return false;
     }
   }

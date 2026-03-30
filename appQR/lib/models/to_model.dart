@@ -1,3 +1,4 @@
+import 'dart:convert';
 /// =============================================================
 /// File: to_model.dart
 /// Mô tả: Model dữ liệu cho bao hàng (Transfer Order - TO).
@@ -13,9 +14,10 @@
 ///   - maxGoiHang     : Hằng số - tối đa 5 gói hàng / bao
 ///   - maxWeight      : Hằng số - tối đa 20 KG / bao
 /// =============================================================
+///
 class TOModel {
   final String maTO; // Mã TO
-  final List<String> danhSachGoiHang; // Danh sách mã gói hàng
+  final  List<Map<String, dynamic>> danhSachGoiHang; // Danh sách mã gói hàng
   final String diaDiemGiaoHang; // Địa điểm giao
   final String trangThai; // Packing / Packed
   final DateTime ngayTao; // Thời gian tạo
@@ -41,13 +43,68 @@ class TOModel {
 
   factory TOModel.fromJson(Map<String, dynamic> json) {
     var rawDsg = json['danhSachGoiHang'];
-    List<String> listGoiHang = [];
+    List<Map<String, dynamic>> listGoiHang = [];
+
+    // 🔥 CASE 1: STRING
     if (rawDsg is String) {
-      // Server lưu dạng chuỗi, có thể bị bọc thêm dấu ngoặc kép → loại bỏ
-      String cleaned = rawDsg.replaceAll('"', '').trim();
-      listGoiHang = cleaned.isEmpty ? [] : cleaned.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-    } else if (rawDsg is List) {
-      listGoiHang = List<String>.from(rawDsg);
+      String cleaned = rawDsg.trim();
+
+      // TH1: JSON chuẩn
+      if (cleaned.startsWith('[')) {
+        try {
+          final decoded = jsonDecode(cleaned);
+          listGoiHang = decoded.map<Map<String, dynamic>>((e) {
+            return {
+              'code': e['code'],
+              'weight': (e['weight'] ?? 0).toDouble(),
+            };
+          }).toList();
+        } catch (e) {
+          listGoiHang = [];
+        }
+      }
+      // format lỗi {code:..., weight:...}
+      else if (cleaned.contains('code') && cleaned.contains('weight')) {
+        final regex = RegExp(r'code:\s*([A-Z0-9]+).*?weight:\s*(\d+\.?\d*)');
+
+        final matches = regex.allMatches(cleaned);
+
+        listGoiHang = matches.map((m) {
+          return {
+            'code': m.group(1),
+            'weight': double.parse(m.group(2)!),
+          };
+        }).toList();
+      }
+
+      // ⚠️ TH3: DB cực cũ "SPX1,SPX2"
+      else {
+        listGoiHang = cleaned.isEmpty
+            ? []
+            : cleaned.split(',').map((e) {
+          return {
+            'code': e.trim(),
+            'weight': 0.0,
+          };
+        }).toList();
+      }
+    }
+
+    // 🔥 CASE 2: LIST
+    else if (rawDsg is List) {
+      listGoiHang = rawDsg.map<Map<String, dynamic>>((e) {
+        if (e is Map) {
+          return {
+            'code': e['code'],
+            'weight': (e['weight'] ?? 0).toDouble(),
+          };
+        } else {
+          return {
+            'code': e.toString(),
+            'weight': 0.0,
+          };
+        }
+      }).toList();
     }
 
     return TOModel(
@@ -57,8 +114,12 @@ class TOModel {
       trangThai: json['trangThai'] ?? 'Packing',
       packer: json['packer'] ?? '',
       totalWeight: (json['totalWeight'] ?? 0.0).toDouble(),
-      ngayTao: json['ngayTao'] != null ? DateTime.tryParse(json['ngayTao'].toString()) : null,
-      completeTime: json['completeTime'] != null ? DateTime.tryParse(json['completeTime'].toString()) : null,
+      ngayTao: json['ngayTao'] != null
+          ? DateTime.tryParse(json['ngayTao'].toString())
+          : null,
+      completeTime: json['completeTime'] != null
+          ? DateTime.tryParse(json['completeTime'].toString())
+          : null,
     );
   }
 

@@ -7,19 +7,24 @@
 ///   - Thêm column KG (trọng lượng)
 ///   - Hiển thị: Mã TO | Số lượng | Địa điểm | Trạng thái | Trọng lượng (KG)
 /// =============================================================
+import 'package:appqr1/models/BillTo.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter/services.dart';
 import '../data/api_service.dart';
 import '../models/BillScreen.dart';
+import '../models/Oders_model.dart';
+import '../QuanLy/QuangLy_logic.dart';
+// import '../models/BillTo.dart';/
 
 
 class QuanLyScreen extends StatefulWidget {
   const QuanLyScreen({super.key});
 
   @override
-  State<QuanLyScreen> createState() => _QuanLyScreenState();
+  State<QuanLyScreen> createState() => QuanLyScreenState();
 }
+//format du lie header
 class _Header extends StatelessWidget {
   final String text;
   const _Header(this.text);
@@ -36,60 +41,22 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
+//format du lieu cot
 class _Cell extends StatelessWidget {
   final String text;
   const _Cell(this.text);
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(10),
-      child: Text(
-        text,
+      child: SelectableText(
+      text,
         textAlign: TextAlign.center,
-        overflow: TextOverflow.ellipsis,
       ),
     );
   }
 }
-class OrderModel {
-  final String id;
-  final String noigui;
-  final String noinhan;
-  final String sanpham;
-  final double soKg;
-  final String trangthai;
-  final DateTime thoigiantao;
-  final DateTime? thoigiandongbao;
-
-  OrderModel({
-    required this.id,
-    required this.noigui,
-    required this.noinhan,
-    required this.sanpham,
-    required this.soKg,
-    required this.trangthai,
-    required this.thoigiantao,
-    this.thoigiandongbao,
-  });
-
-  factory OrderModel.fromJson(Map<String, dynamic> json) {
-    return OrderModel(
-      id: json['id'] ?? '',
-      noigui: json['noiGui'] ?? '',
-      noinhan: json['noiNhan'] ?? '',
-      sanpham: json['sanPham'] ?? '',
-      soKg: (json['soKg'] as num?)?.toDouble() ?? 0,
-      trangthai: json['trangThai'] ?? '',
-      thoigiantao: DateTime.tryParse(json['thoiGianTao'] ?? '') ?? DateTime.now(),
-      thoigiandongbao: json['thoiGianDongBao'] != null
-          ? DateTime.tryParse(json['thoiGianDongBao'].toString())
-          : null,
-    );
-  }
-}
-class _QuanLyScreenState extends State<QuanLyScreen> {
+class QuanLyScreenState extends State<QuanLyScreen> {
   final TextEditingController searchController = TextEditingController();
   List<OrderModel> allOrders = [];
   List<OrderModel> filteredList = [];
@@ -98,45 +65,19 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshList();
+    loadData();
+    // refreshList();
+    loadOrders();
+    inboundCount();
   }
+  //lay du lieu tong don
 
   /// Tự động refresh khi quay lại màn hình
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _refreshList();
+    refreshList();
   }
-
-  Future<void> _refreshList() async {
-    try {
-      final data = await ApiService.getOrderQL();
-      setState(() {
-        allOrders = data;
-        filteredList = data;
-      });
-    } catch (e) {
-      debugPrint('Error refreshing list: $e');
-    }
-  }
-
-  void _search(String keyword) {
-    setState(() {
-      if (keyword.isEmpty) {
-        filteredList = allOrders;
-      } else {
-        filteredList = allOrders
-            .where((o) => o.id.toUpperCase().contains(keyword.toUpperCase()))
-            .toList();
-      }
-    });
-  }
-  //
-  // List<TOModel> _searchID(List<TOModel> list, String keyword) {
-  //   if (keyword.isEmpty) return list;
-  //   final upper = keyword.toUpperCase();
-  //   return list.where((to) => to.maTO.toUpperCase().contains(upper)).toList();
-  // }
 
   /// Format thời gian hiển thị
   String formatTime(DateTime? time) {
@@ -144,9 +85,21 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
     final year = (time.year % 100).toString().padLeft(2,'0');
     return "$year/${time.month}/${time.day} ${time.hour}:${time.minute.toString().padLeft(2, '0')}";
   }
-  
+//ham trung gian lay data tu logic sang UI
+  Future<void> loadData() async {
+    final data = await refreshList();
+    final total = await loadOrders();
+    final inbound = await inboundCount();
 
-  Future<void> _scanToSearch() async {
+    setState(() {
+      allOrders = data;
+      filteredList = data;
+      tongDon = total;
+      donInbound = inbound;
+    });
+  }
+
+  Future<void> scanToSearch() async {
     final scanController = MobileScannerController(
       detectionSpeed: DetectionSpeed.normal,
       facing: CameraFacing.back,
@@ -170,10 +123,14 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                   if (capture.barcodes.isEmpty) return;
                   final code = capture.barcodes.first.rawValue?.trim() ?? '';
                   if (code.isNotEmpty) {
-                    searchController.text = code.toUpperCase();
-                    _search(code.toUpperCase());
+                    final keyword = code.toUpperCase();
+                    final result = search(allOrders, keyword);
+                    setState(() {
+                      searchController.text = keyword;
+                      filteredList = result;
+                    });
                     scanController.dispose();
-                    Navigator.pop(ctx);
+                    Navigator.pop(context);
                   }
                 },
               ),
@@ -276,7 +233,9 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                   Expanded(
                     child: TextField(
                       controller: searchController,
-                      onChanged: _search,
+                      onChanged: (value) => setState(() {
+                        filteredList = search(allOrders, value);
+                      }),
                       decoration: InputDecoration(
                         hintText: 'Tìm mã đơn',
                         hintStyle: TextStyle(color: Colors.grey[400]),
@@ -315,7 +274,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: IconButton(
-                      onPressed: _scanToSearch,
+                      onPressed: scanToSearch,
                       icon: const Icon(
                         Icons.qr_code_scanner,
                         color: Colors.white,
@@ -326,7 +285,16 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                 ],
               ),
             ),
-
+            Padding(
+                padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Text("Tổng đơn: $tongDon"),
+                  const Spacer(),
+                  Text("Đã đóng: $donInbound/$tongDon"),
+                ],
+              ),
+            ),
             // ── Bảng dữ liệu (kéo ngang được) ──
             Expanded(
               child: SingleChildScrollView(
@@ -335,17 +303,16 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Table(
                     border: TableBorder.all(color: Colors.grey[400]!, width: 1),
-                    defaultColumnWidth: const IntrinsicColumnWidth(),
+                    // defaultColumnWidth: const IntrinsicColumnWidth(),
                     columnWidths: {
-                      0: const FixedColumnWidth(150), //1 id
-                      1: const FixedColumnWidth(70),//2 NG
-                      2: const FixedColumnWidth(80),//3 NN
-                      3: const FixedColumnWidth(100),//4 SP
-                      4: const FixedColumnWidth(50),//5 KG
-                      5: const FixedColumnWidth(90,), //6tt
-                      6: const FixedColumnWidth(110,), // 7
-                      7: const FixedColumnWidth(110,), // 8
-                      8: const FixedColumnWidth(60,), // 8
+                      0: const FixedColumnWidth(160), //1 id
+                      1: const FixedColumnWidth(80),//3 NN
+                      2: const FixedColumnWidth(50),//5 KG
+                      3: const FixedColumnWidth(120,), //6tt
+                      4: const FixedColumnWidth(120,), // 7
+                      5: const FixedColumnWidth(120,), // 8
+                      6: const FixedColumnWidth(125),//ma to
+                      7: const FixedColumnWidth(60,), // 9
                     },
                     children: [
                       // Header row
@@ -353,13 +320,12 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                         decoration: BoxDecoration(color: Colors.orange[100]),
                         children: const [
                           _Header('Mã Đơn'),
-                          _Header('Nơi gửi'),
                           _Header('Nơi nhận'),
-                          _Header('Sản Phẩm'),
                           _Header('KG'),
                           _Header('Trạng Thái'),
                           _Header('Thời Gian Tạo'),
                           _Header('T/Gian Đóng'),
+                          _Header('Mã TO'),
                           _Header('View'),
                         ],
                       ),
@@ -369,11 +335,8 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                         return TableRow(
                           children: [
                             _Cell(o.id),
-                            _Cell(o.noigui),
                             _Cell(o.noinhan),
-                            _Cell(o.sanpham),
-                            _Cell(o.soKg.toStringAsFixed(1)),
-
+                            _Cell(o.soKi.toStringAsFixed(1)),
                             /// STATUS
                             Padding(
                               padding: const EdgeInsets.all(6),
@@ -383,9 +346,9 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                                 alignment: Alignment.center,
                                 padding: const EdgeInsets.symmetric(vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: o.trangthai == 'InBound'
+                                  color: o.trangthai == 'Inbound'
                                       ? Colors.green
-                                      : Colors.orange,
+                                      : Colors.red,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -399,7 +362,7 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                             _Cell(o.thoigiandongbao != null
                                 ? formatTime(o.thoigiandongbao!)
                                 : '—'),
-
+                            _Cell(o.maTO),
                             /// VIEW
                             Center(
                               child: SizedBox(
@@ -418,7 +381,6 @@ class _QuanLyScreenState extends State<QuanLyScreen> {
                                 ),
                               ),
                             ),
-
                           ],
                         );
                       }),

@@ -3,11 +3,13 @@
 /// Mô tả: UI (giao diện) cho màn hình "Table TO" - Danh sách bao hàng.
 ///        Logic xử lý nằm trong table_to_logic.dart.
 /// =============================================================
+import 'package:appqr1/data/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/to_model.dart';
 import 'create_to_screen.dart';
 import 'table_to_logic.dart';
+import '../models/BillTo.dart';
 
 class TableTOScreen extends StatefulWidget {
   final Map<String, dynamic>? user;
@@ -16,17 +18,71 @@ class TableTOScreen extends StatefulWidget {
   @override
   State<TableTOScreen> createState() => _TableTOScreenState();
 }
+//Dùng cho tiêu đề cột (header row)
+class _Header extends StatelessWidget {
+  final String text;
+  const _Header(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+// Dùng cho dữ liệu trong bảng (data row)
+class _Cell extends StatelessWidget {
+  final String text;
+  const _Cell(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
 
 class _TableTOScreenState extends State<TableTOScreen> {
   final TableTOLogic logic = TableTOLogic();
+  // List<TOModel> filteredList = [];
   final TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _refreshList();
+    loadtongTO();
+    TOpacked();
   }
+  //xuat UI toan bo TO dang co
+int tongTO =0;
+  void loadtongTO ()async{
+    final to = await ApiService.getAllTOsFromServer();
+    setState(() {
+      tongTO = to.length;
+    });
+  }
+  //lay tong TO da dongs
+  int tongTopacked = 0;
 
+  void TOpacked () async{
+    final to = await ApiService.getTOStatus("Packed");
+    setState(() {
+      tongTopacked = to?.length ?? 0;
+    });
+  }
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -43,22 +99,17 @@ class _TableTOScreenState extends State<TableTOScreen> {
     logic.search(keyword);
     setState(() {});
   }
+  /// Format thời gian hiển thị
+  String formatTime(DateTime? time) {
+    if (time == null) return '';
+    final year = (time.year % 100).toString().padLeft(2,'0');
+    return "$year/${time.month}/${time.day} ${time.hour}:${time.minute.toString().padLeft(2, '0')}";
+  }
 
   /// Mở CreateTOScreen ở chế độ chỉnh sửa
   void _editTO(TOModel to) async {
     final isAdmin = widget.user?['username'] == 'admin';
     final isPacked = to.trangThai == 'Packed';
-
-    // Chỉ admin mới sửa được TO đã đóng (Packed)
-    if (isPacked && !isAdmin) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Chỉ Admin mới được sửa bao TO đã đóng'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
 
     await Navigator.push(
       context,
@@ -134,6 +185,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
           children: [
             _buildHeader(),
             _buildSearchBar(isDark),
+            _buildTextTong(),
             Expanded(child: _buildTable()),
             if (logic.isDeleteMode) _buildDeleteActions(),
           ],
@@ -141,11 +193,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
       ),
     );
   }
-
-  // ══════════════════════════════════════
-  // UI Components
-  // ══════════════════════════════════════
-
+  //UI
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
@@ -201,7 +249,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
       ),
     );
   }
-
+//thanh timf kieems vaf camera
   Widget _buildSearchBar(bool isDark) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -229,7 +277,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide:
-                      BorderSide(color: Colors.orange[600]!, width: 2),
+                      BorderSide(color: Colors.black!, width: 2),
                 ),
                 filled: true,
                 fillColor:
@@ -252,8 +300,20 @@ class _TableTOScreenState extends State<TableTOScreen> {
         ],
       ),
     );
-  }
 
+}
+ Widget _buildTextTong(){
+    return Padding(
+       padding: const EdgeInsets.all(12),
+     child: Row(
+       children: [
+         Text("Tổng TO: ${tongTO}"),
+         const Spacer(),
+         Text("Đã Complete: ${tongTopacked}/${tongTO}"),
+       ],
+     ),
+   );
+ }
   Widget _buildTable() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -263,195 +323,145 @@ class _TableTOScreenState extends State<TableTOScreen> {
           border: TableBorder.all(color: Colors.grey[400]!, width: 1),
           defaultColumnWidth: const IntrinsicColumnWidth(),
           columnWidths: {
-            if (logic.isDeleteMode) 0: const FixedColumnWidth(40),
-            (logic.isDeleteMode ? 1 : 0): const FixedColumnWidth(170),
-            (logic.isDeleteMode ? 2 : 1): const FixedColumnWidth(90),
-            (logic.isDeleteMode ? 3 : 2): const FixedColumnWidth(120),
-            (logic.isDeleteMode ? 4 : 3): const FixedColumnWidth(95),
-            (logic.isDeleteMode ? 5 : 4): const FixedColumnWidth(80),
-            (logic.isDeleteMode ? 6 : 5): const FixedColumnWidth(120),
-            (logic.isDeleteMode ? 7 : 6): const FixedColumnWidth(120),
-            (logic.isDeleteMode ? 8 : 7): const FixedColumnWidth(120),
-            (logic.isDeleteMode ? 9 : 8): const FixedColumnWidth(70),
+            if (logic.isDeleteMode) 0: const FixedColumnWidth(30),//neu co xóa
+            (logic.isDeleteMode ? 1 : 0): const FixedColumnWidth(130),//id
+            (logic.isDeleteMode ? 2 : 1): const FixedColumnWidth(80),//Số lượng
+            (logic.isDeleteMode ? 3 : 2): const FixedColumnWidth(60),//đến
+            (logic.isDeleteMode ? 4 : 3): const FixedColumnWidth(90),//status
+            (logic.isDeleteMode ? 5 : 4): const FixedColumnWidth(45),//khối lượng
+            (logic.isDeleteMode ? 6 : 5): const FixedColumnWidth(70),//packer
+            (logic.isDeleteMode ? 7 : 6): const FixedColumnWidth(115),//time create
+            (logic.isDeleteMode ? 8 : 7): const FixedColumnWidth(115),//tiem comple
+            (logic.isDeleteMode ? 9 : 8): const FixedColumnWidth(52),//view
+            (logic.isDeleteMode ? 10 : 9): const FixedColumnWidth(50),
           },
           children: [
             // Header row
-            _buildHeaderRow(),
+            TableRow(
+              decoration: BoxDecoration(color: Colors.orange[100]),
+              children: [
+                if (logic.isDeleteMode)
+                  const SizedBox(width: 40),
+                _Header('Mã TO'),
+                _Header('Số lượng'),
+                _Header('Đến'),
+                _Header('Trạng thái'),
+                _Header('KG'),
+                _Header('Packer'),
+                _Header('Thời Gian Tạo'),
+                _Header('T/Gian Đóng'),
+                _Header('View'),
+                _Header('Sửa'),
+
+              ],
+            ),
             // Data rows
-            ...logic.filteredList.map((to) => _buildDataRow(to)),
+            ...logic.filteredList.map((t) {
+              // final isPacked = to.trangThai == 'Inbound';
+              return TableRow(
+                children: [
+                  if (logic.isDeleteMode)
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => logic.toggleSelect(t.maTO));
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          splashColor: Colors.blue.withOpacity(0.3),
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: logic.selectedTOs.contains(t.maTO)
+                                    ? Colors.red
+                                    : Colors.grey[400]!,
+                                width: 2,
+                              ),
+                              color: logic.selectedTOs.contains(t.maTO)
+                                  ? Colors.red
+                                  : Colors.transparent,
+                            ),
+                            child: logic.selectedTOs.contains(t.maTO)
+                                ? const Icon(Icons.check,
+                                size: 14, color: Colors.white)
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                  _Cell(t.maTO),
+                  _Cell('${t.soLuongDonHang}'),
+                  _Cell(t.diaDiemGiaoHang),
+                  /// STATUS
+                  Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: t.trangThai.isEmpty
+                        ? const SizedBox() // 🔥 trống hoàn toàn
+                        : Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: t.trangThai == 'Packed'
+                            ? Colors.green
+                            : Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        t.trangThai,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  //khoi luong
+                  _Cell(t.totalWeight.toStringAsFixed(1)),
+                  _Cell(t.packer.isEmpty ? '—' : t.packer),
+
+                  _Cell(formatTime(t.ngayTao)),
+                  _Cell(t.completeTime != null
+                      ? formatTime(t.completeTime!)
+                      : '—'),
+                  /// VIEW
+                  Center(
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BillTO(TO: t),
+                            ),
+                          );
+                        },
+                        child: const Icon(Icons.visibility, color: Colors.blue),
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: InkWell(
+                        onTap: () => _editTO(t),
+                        child: const Icon(Icons.edit, color: Colors.orange),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            ),
           ],
         ),
       ),
     );
   }
-
-  TableRow _buildHeaderRow() {
-    const headerStyle = TextStyle(
-        fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black);
-    return TableRow(
-      decoration: BoxDecoration(color: Colors.orange[100]),
-      children: [
-        if (logic.isDeleteMode)
-          const Padding(
-              padding: EdgeInsets.all(10),
-              child: SizedBox(width: 20)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Mã TO',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Số lượng',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Station',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Trạng thái',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('KG',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Packer',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Create time',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Complete time',
-                style: headerStyle, textAlign: TextAlign.center)),
-        const Padding(
-            padding: EdgeInsets.all(10),
-            child: Text('Sửa',
-                style: headerStyle, textAlign: TextAlign.center)),
-      ],
-    );
-  }
-
-  TableRow _buildDataRow(TOModel to) {
-    final isPacked = to.trangThai == 'Packed';
-    return TableRow(
-      children: [
-        if (logic.isDeleteMode)
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  setState(() => logic.toggleSelect(to.maTO));
-                },
-                borderRadius: BorderRadius.circular(4),
-                splashColor: Colors.blue.withOpacity(0.3),
-                child: Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: logic.selectedTOs.contains(to.maTO)
-                          ? Colors.red
-                          : Colors.grey[400]!,
-                      width: 2,
-                    ),
-                    color: logic.selectedTOs.contains(to.maTO)
-                        ? Colors.red
-                        : Colors.transparent,
-                  ),
-                  child: logic.selectedTOs.contains(to.maTO)
-                      ? const Icon(Icons.check,
-                          size: 14, color: Colors.white)
-                      : null,
-                ),
-              ),
-            ),
-          ),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text(to.maTO,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13))),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text('${to.soLuongDonHang}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13))),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text(
-                to.diaDiemGiaoHang.isEmpty ? '—' : to.diaDiemGiaoHang,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12))),
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: isPacked ? Colors.green : Colors.red,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(to.trangThai,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
-          ),
-        ),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text('${to.totalWeight.toStringAsFixed(1)}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13))),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text(to.packer.isEmpty ? '—' : to.packer,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13))),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text(logic.formatTime(to.ngayTao),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12))),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text(logic.formatTime(to.completeTime),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12))),
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _editTO(to),
-              borderRadius: BorderRadius.circular(20),
-              splashColor: Colors.orange.withOpacity(0.3),
-              child: Icon(Icons.edit,
-                  color: Colors.orange[600], size: 22),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildDeleteActions() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -465,16 +475,16 @@ class _TableTOScreenState extends State<TableTOScreen> {
               onPressed: logic.selectedTOs.isEmpty
                   ? null
                   : () async {
-                      await logic.deleteSelectedTOs();
-                      setState(() {});
-                    },
+                await logic.deleteSelectedTOs();
+                setState(() {});
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
                 elevation: 6,
-                shadowColor: Colors.red.withOpacity(0.5),
+                shadowColor: Colors.orange.withOpacity(0.5),
               ),
               child: Text(
                 'Xác nhận xóa (${logic.selectedTOs.length})',

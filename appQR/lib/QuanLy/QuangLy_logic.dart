@@ -1,0 +1,61 @@
+import 'package:appqr1/models/BillTo.dart';
+import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter/services.dart';
+import '../data/api_service.dart';
+import '../models/Oders_model.dart';
+import '../QuanLy/QuanLyscreen.dart';
+import '../models/Oders_model.dart';
+
+int tongDon =0;
+Future<int> loadOrders() async {
+  final orders = await ApiService.getOrders();
+  return orders.length;
+}
+int donInbound = 0;
+Future<int> inboundCount() async {
+  final orders = await ApiService.getStatusOrders("Inbound");
+  return orders.length;
+}
+
+Future<List<OrderModel>> refreshList() async {
+  final data = await ApiService.getOrderQL();
+  sortList(data);
+  return data;
+}
+List<OrderModel> search(List<OrderModel> list, String keyword) {
+  if (keyword.isEmpty) return list;
+
+  return list
+      .where((o) => o.id.toUpperCase().contains(keyword.toUpperCase()))
+      .toList();
+}
+//sap xep theo trang thais
+
+void sortList(List<OrderModel> list) {
+  list.sort((a, b) {
+    // 1. Ưu tiên trạng thái
+    int getPriority(String status) {
+      switch (status) {
+        case 'Inbound':
+          return 0;
+        case 'Ountbound':
+          return 1;
+        default:
+          return 2;
+      }
+    }
+    int priorityCompare =
+    getPriority(a.trangthai).compareTo(getPriority(b.trangthai));
+
+    if (priorityCompare != 0) {
+      return priorityCompare;
+    }
+
+    // 2. Nếu cùng trạng thái → sort theo thời gian (mới nhất trước)
+    DateTime timeA = a.thoigiantao ?? DateTime(1970);
+    DateTime timeB = b.thoigiantao ?? DateTime(1970);
+
+    return timeB.compareTo(timeA); // DESC
+  });
+}

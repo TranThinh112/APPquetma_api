@@ -4,7 +4,7 @@
 ///        Tách riêng khỏi UI.
 /// =============================================================
 import '../models/to_model.dart';
-import '../data/to_database.dart';
+// import '../data/to_database.dart';
 import '../data/api_service.dart';
 import 'package:flutter/foundation.dart';
 
@@ -21,14 +21,44 @@ class TableTOLogic {
       final serverData = await ApiService.getAllTOsFromServer();
       allTOs = serverData.map((e) => TOModel.fromJson(e)).toList();
       filteredList = _filterByKeyword(allTOs, '');
+      _sortList(filteredList);
     } catch (e) {
       debugPrint('Error refreshing list: $e');
     }
+  }
+  //sap xep
+  void _sortList(List<TOModel> list) {
+    list.sort((a, b) {
+      // 1. Ưu tiên trạng thái
+      int getPriority(String status) {
+        switch (status) {
+          case 'Packed':
+            return 0;
+          case 'Packing':
+            return 1;
+          default:
+            return 2;
+        }
+      }
+      int priorityCompare =
+      getPriority(a.trangThai).compareTo(getPriority(b.trangThai));
+
+      if (priorityCompare != 0) {
+        return priorityCompare;
+      }
+
+      // 2. Nếu cùng trạng thái → sort theo thời gian (mới nhất trước)
+      DateTime timeA = a.ngayTao ?? DateTime(1970);
+      DateTime timeB = b.ngayTao ?? DateTime(1970);
+
+      return timeB.compareTo(timeA); // DESC
+    });
   }
 
   /// Tìm kiếm theo từ khóa
   void search(String keyword) {
     filteredList = _filterByKeyword(allTOs, keyword);
+    _sortList(filteredList);
   }
 
   List<TOModel> _filterByKeyword(List<TOModel> list, String keyword) {

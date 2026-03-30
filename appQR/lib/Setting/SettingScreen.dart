@@ -64,16 +64,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           ListTile(
-            leading: const Icon(Icons.lock),
-            title: const Text("Đổi mật khẩu"),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Chưa làm chức năng này")),
-              );
-            },
-          ),
-
-          ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text("Đăng xuất", style: TextStyle(color: Colors.red)),
             onTap: () {
@@ -98,8 +88,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           SwitchListTile(
-            secondary: const Icon(Icons.dark_mode),
-            title: const Text("Dark Mode"),
+            secondary: isDarkMode
+                ? const Icon(Icons.light_mode)
+                : const Icon(Icons.dark_mode),
+
+            title: Text(isDarkMode ? "Light Mode" : "Dark Mode"),
             value: isDarkMode,
             onChanged: (value) {
               setState(() {
@@ -109,35 +102,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               MyApp.of(context)?.toggleTheme(value);
             },
           ),
-
           ListTile(
             leading: const Icon(Icons.language),
-            title: const Text("Ngôn ngữ"),
-            subtitle: Text(language),
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (context) => Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      title: const Text("Tiếng Việt"),
-                      onTap: () {
-                        setState(() => language = "Tiếng Việt");
-                        Navigator.pop(context);
-                      },
-                    ),
-                    ListTile(
-                      title: const Text("English"),
-                      onTap: () {
-                        setState(() => language = "English");
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
+            title: const Text("Ngôn ngữ \nTiếng Việt"),
+            // subtitle: Text(language),
+             // Text("Tiếng Việt"),
           ),
         ],
       ),

@@ -104,41 +104,85 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                 ],
               ),
             ),
-              SizedBox( height: 50,),
-              TextField(
-                // controller: username,
-                decoration: InputDecoration(
-                  labelText: "Người gửi",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.person_outline),
-                ),
-              ),
-              SizedBox( height: 20,),
-              TextField(
-                // controller: username,
-                decoration: InputDecoration(
-                  labelText: "Thông tin, địa chỉ ",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.person_pin_circle ),
-                ),
-              ),
-              SizedBox( height: 20,),
-              TextField(
-                // controller: username,
-                decoration: InputDecoration(
-                  labelText: "Người nhận",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.person_outline),
-                ),
-              ),
-              SizedBox( height: 20,),
-              TextField(
-                // controller: username,
-                decoration: InputDecoration(
-                  labelText: "Thông tin, địa chỉ",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.person_pin_circle ),
-                ),
+              SizedBox(height: 30),
+              Column(
+                children: [
+                  SizedBox(width: 20),
+                  Align(
+                    alignment: Alignment.center, // hoặc center
+                    child: SizedBox(
+                      width: 350,
+                      child: TextField(
+                        // controller: username,
+                        decoration: InputDecoration(
+                          labelText: "Người gửi",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.person_outline),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.center, // hoặc center
+                    child: SizedBox(
+                      width: 350,
+                      child: TextField(
+                        // controller: username,
+                        decoration: InputDecoration(
+                          labelText: "Thông tin, địa chỉ ",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.person_pin_circle ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.center, // hoặc center
+                    child: SizedBox(
+                      width: 350,
+                      child: TextField(
+                        // controller: username,
+                        decoration: InputDecoration(
+                          labelText: "Người nhận",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.person_outline),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.center, // hoặc center
+                    child: SizedBox(
+                      width: 350,
+                      child: TextField(
+                        // controller: username,
+                        decoration: InputDecoration(
+                          labelText: "Thông tin, địa chỉ ",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.person_pin_circle ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.center, // hoặc center
+                    child: SizedBox(
+                      width: 350,
+                      child: TextField(
+                        // controller: username,
+                        decoration: InputDecoration(
+                          labelText: "Thông tin sản phẩm ",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.production_quantity_limits_rounded ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 20),
               Row(

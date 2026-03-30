@@ -3,45 +3,90 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import '../data/api_service.dart';
 import '../QuanLy/QuanLyscreen.dart';
+import '../models/Oders_model.dart';
+import 'package:intl/intl.dart'; //format tiền, ngày giừo
+import 'dart:ui' as ui; //xử lý ảnh
+import 'dart:io'; //tạo, ghi file
+import 'package:path_provider/path_provider.dart'; //Lấy đường dẫn lưu file trong máy
+import 'package:share_plus/share_plus.dart'; //mở menu share, gửi file sang app khác
+import 'package:flutter/rendering.dart';//Dùng cho: RenderRepaintBoundary để chụp
+import 'dart:typed_data'; //xử lý dữ liệu nhị phân (binary)
+
 
 class BillScreen extends StatelessWidget {
   final OrderModel order;
-  const BillScreen({super.key, required this.order});
+  //format gia tien
+  final formatter = NumberFormat('#,###', 'vi_VN');
+  final GlobalKey _billKey = GlobalKey();
+  BillScreen({super.key, required this.order});
+//hàm share
+  Future<void> shareBill() async {
+    try {
+      RenderRepaintBoundary boundary =
+      _billKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
+      ui.Image image = await boundary.toImage(pixelRatio: 3);
+      ByteData? byteData =
+      await image.toByteData(format: ui.ImageByteFormat.png);
+
+      final pngBytes = byteData!.buffer.asUint8List();
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/bill.png');
+      await file.writeAsBytes(pngBytes);
+
+      await Share.shareXFiles([XFile(file.path)], text: "Bill SPX");
+    } catch (e) {
+      print("Lỗi share: $e");
+    }
+  }
   //format cho time
   String formatTime(DateTime time) {
     return "${time.day}-${time.month}-${time.year} "
         "${time.hour}:${time.minute.toString().padLeft(2, '0')}";
   }
+
   @override
+  //cố định cho ext
+  Widget _boldText(String text) {
+    return Text(
+      text,
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    );
+  }
   Widget build(BuildContext context) {
     const myDivider = Divider(
-      thickness: 1,
+      thickness: 2,
       color: Colors.black,
     );
     const myVerticalDivider = VerticalDivider(
-      thickness: 1,
+      thickness: 2,
         color: Colors.black,
     );
     double w = MediaQuery.of(context).size.width;
-    // double h = MediaQuery.of(context).size.height;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: shareBill,
+          ),
+        ],
         centerTitle: true,
       ),
       body: Center(
       child: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 500,),
+            constraints: BoxConstraints(maxWidth: 500),
+            child: RepaintBoundary(
+              key: _billKey,
              child: Container(
-               // height: h * 0.6,  // 60% chiều dọc
               width: w * 0.9,   // 90% chiều ngang
-              //  width: double.infinity,
               padding: const EdgeInsets.fromLTRB(10,10,2,10),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.black,width: 2.0,style: BorderStyle.solid),
@@ -62,19 +107,12 @@ class BillScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                    Center(
-                    child: Text(
-                      "Mã vận đơn: ${order.id}",
-                      style: TextStyle(fontSize: 12),
-                    ),
+                     child: _boldText("Mã TO: ${order.id}"),
                   ),
                   myDivider,
-                  // Mã tuyế
 
                    Center(
-                    child:  Text(
-                      "${order.noinhan}",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    child:  _boldText("${order.noinhan}"),
                   ),
 
                   myDivider,
@@ -84,35 +122,26 @@ class BillScreen extends StatelessWidget {
                     children: [
                       // BÊN TRÁI - Người gửi
                       Expanded(
-                        child: Text(
-                              "Từ: ${order.noigui}\nĐịa chỉ: ...",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                        child: _boldText( "Từ: ${order.nguoigui}\nĐịa chỉ: ${order.diachigui}")
                         ),
 
                         const SizedBox(width: 10),
                         // Nội dung
                         Container(
-                          width: 1,
-                          height: 50, // 👈 set tay (đơn giản + ổn định)
+                          width: 2,
+                          height: 120,
                           color: Colors.black,
                         ),
-                        myVerticalDivider,
+                        // myVerticalDivider,
                         const SizedBox(width: 10),
 
                         // BÊN PHẢI - Người nhận
                       Expanded(
-                        child: Text(
-                          "Đến: ${order.noinhan}\nĐịa chỉ: ...",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        child: _boldText("Đến: ${order.nguoinhan}\nĐịa chỉ: ${order.diachinhan}")
                       ),
                       ],
                     ),
-
-
                     myDivider,
-
                     // Noi dung, QR, Sort, Time
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,21 +149,16 @@ class BillScreen extends StatelessWidget {
                       /// LEFT - Nội dung
                       Expanded(
                         flex: 2,
-                        child: Text(
-                          "Nội dung: ${order.sanpham}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        child: _boldText( "Nội dung: ${order.sanpham}")
                       ),
 
                       const SizedBox(width: 10),
-
                       Container(
-                        width: 1,
-                        height: 150,
+                        width: 2,
+                        height: 190,
                         color: Colors.black,
                       ),
-
-                      myVerticalDivider,
+                      // myVerticalDivider,
                       const SizedBox(width: 10),
 
                       /// RIGHT - QR
@@ -148,19 +172,14 @@ class BillScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 5),
                             myDivider,
-                            Text(
-                              order.noigui,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            //noi gui
+                            _boldText(order.noigui),
                             myDivider,
                             const Text(
                               "Ngày đặt:",
-                              style: TextStyle(fontSize: 10),
+                              style: TextStyle(fontSize: 12),
                             ),
-                            Text(
-                              formatTime(order.thoigiantao),
-                              style: const TextStyle(fontSize: 12),
-                            ),
+                            _boldText(formatTime(order.thoigiantao)),
                           ],
                         ),
                       ),
@@ -173,36 +192,27 @@ class BillScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       flex: 3,
-                      child: Text(
-                        "92.400 VND",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: _boldText( "${formatter.format(order.giatien)} VND"),
                     ),
+
                     Container(
-                      width: 1,
+                      width: 2,
                       height: 30, // 👈 set tay (đơn giản + ổn định)
                       color: Colors.black,
                     ),
-                    myVerticalDivider,
+                    // myVerticalDivider,
                     const SizedBox(width: 10),
                     Expanded(
                       flex: 2,
-                      child: Text(
-                        "Khoi luong: ${order.soKg}kg",
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: _boldText(
+                        "Khối lượng: ${order.soKi}kg"),
                     ),
                   ],
                 ),
             ],
               ),
         ),
+          ),
             ),
           ),
         ),

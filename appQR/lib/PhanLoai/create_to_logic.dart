@@ -7,7 +7,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../models/to_model.dart';
-import '../data/to_database.dart';
 import '../data/api_service.dart';
 
 /// Model cho 1 item đã quét (mã đơn hàng)
@@ -69,10 +68,11 @@ class CreateTOLogic {
       tongKhoiLuong = editTO.totalWeight;
       scannedCodes.addAll(
         editTO.danhSachGoiHang.asMap().entries.map((entry) {
+          final item = entry.value;
           return ScannedItem(
-            code: entry.value,
+            code: item['code'],
             timestamp: DateTime.now().subtract(Duration(seconds: entry.key)),
-            weight: 0,
+            weight: (item['weight'] ?? 0).toDouble(),
           );
         }),
       );
@@ -147,24 +147,35 @@ class CreateTOLogic {
       // Giữ station cũ (cùng trạm)
       station = _stationBanDau;
       // Thêm đơn hàng vào TO mới
-      tongKhoiLuong = itemWeight;
-      scannedCodes.insert(
-        0,
-        ScannedItem(code: code, timestamp: DateTime.now(), weight: itemWeight),
+
+      final newItem = ScannedItem(
+        code: code,
+        timestamp: DateTime.now(),
+        weight: itemWeight,
       );
+
+      scannedCodes.insert(0, newItem);
+      tongKhoiLuong = itemWeight;
+
       await _updateTOInDatabase();
+
       return ScanResult.overWeightNewTO;
     }
 
-    // ✅ Hợp lệ → thêm vào danh sách
-    tongKhoiLuong += itemWeight;
-    scannedCodes.insert(
-      0,
-      ScannedItem(code: code, timestamp: DateTime.now(), weight: itemWeight),
+    // ───────── ADD ITEM (CHUẨN) ─────────
+    final newItem = ScannedItem(
+      code: code,
+      timestamp: DateTime.now(),
+      weight: itemWeight,
     );
 
-    // Lưu vào DB
-    await _updateTOInDatabase();
+    scannedCodes.insert(0, newItem); //  chỉ add 1 lần
+    tongKhoiLuong += itemWeight;
+
+    //  LƯU NGAY SAU KHI SCAN
+    await _saveTOToDatabase(isNew: false);
+
+    await ApiService.updatStatusOrders(code, 'Inbound');
 
     // Kiểm tra đã đầy chưa → auto complete (đúng 10kg hoặc 5/5)
     if (scannedCodes.length >= TOModel.maxGoiHang ||
@@ -190,9 +201,11 @@ class CreateTOLogic {
   /// Xóa 1 item — nếu xóa hết → tự xóa TO khỏi hệ thống
   Future<void> removeItem(int index) async {
     if (index < 0 || index >= scannedCodes.length) return;
+    final xoaStatus = scannedCodes[index];
+    //cap nhat trang thai outbound neu xoa don hang trong TO
+    await ApiService.updatStatusOrders(xoaStatus.code, 'Outbound');
     tongKhoiLuong -= scannedCodes[index].weight;
     scannedCodes.removeAt(index);
-
     if (scannedCodes.isEmpty) {
       // Xóa TO khỏi database khi không còn đơn hàng nào
       await _deleteTOFromDatabase();
@@ -208,8 +221,16 @@ class CreateTOLogic {
       final allTOs = serverData.map((e) => TOModel.fromJson(e)).toList();
       for (final to in allTOs) {
         if (to.maTO == toId) continue; // Bỏ qua TO hiện tại
-        if (to.danhSachGoiHang.contains(code)) {
-          return to.maTO; // Trả về mã TO chứa đơn này
+        for (final item in to.danhSachGoiHang) {
+          if (item['code'] == code) {
+            return to.maTO;
+          }
+        }
+      }
+      print("CHECK CODE: $code");
+
+      for (final to in allTOs) {
+        for (final item in to.danhSachGoiHang) {
         }
       }
     } catch (e) {
@@ -232,15 +253,13 @@ class CreateTOLogic {
   Future<bool> completeTO() async {
     if (scannedCodes.isEmpty) return false;
 
-    // final wasPacked = (originalStatus == 'Packed'); // Không cần thiết nữa vì mọi thứ đã đồng bộ lưu trên server
-
     originalStatus = 'Packed';
     // Chỉ set completedAt một lần khi đóng lần đầu
     completedAt ??= DateTime.now();
 
     final toComplete = _buildTOModel();
     await _updateTOInDatabase(); // Chạy thẳng lệnh Update lên server
-    
+
     return true;
   }
 
@@ -249,7 +268,10 @@ class CreateTOLogic {
   TOModel _buildTOModel() {
     return TOModel(
       maTO: toId,
-      danhSachGoiHang: scannedCodes.map((item) => item.code).toList(),
+      danhSachGoiHang: scannedCodes.map((item) => {
+        'code': item.code,
+        'weight': item.weight,
+      }).toList(),
       diaDiemGiaoHang: station,
       trangThai: originalStatus,
       packer: packer,
@@ -264,7 +286,7 @@ class CreateTOLogic {
       if (isNew) {
         await ApiService.uploadTO(_buildTOModel());
       } else {
-        await ApiService.updateTOOnServer(_buildTOModel());
+        await ApiService.updateTO(_buildTOModel());
       }
     } catch (e) {
       debugPrint("Lỗi upload tạo TO: $e");
@@ -274,11 +296,9 @@ class CreateTOLogic {
   Future<void> _updateTOInDatabase() async {
     try {
       final model = _buildTOModel();
-      await ApiService.updateTOOnServer(model);
+      await ApiService.updateTO(model);
     } catch (e) {
       debugPrint("Lỗi update thay đổi: $e");
     }
   }
 }
-
-
