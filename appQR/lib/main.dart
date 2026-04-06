@@ -16,9 +16,30 @@ import 'TaoDon/TaoDonScreen.dart';
 import 'data/api_service.dart';
 import 'Setting/SettingScreen.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'TaoDon/TaoDon_logic.dart';
 
-
+class MyHttpOverrides extends HttpOverrides {
+    @override
+    HttpClient createHttpClient(SecurityContext? context) {
+      return super.createHttpClient(context)
+        ..badCertificateCallback =
+            (X509Certificate cert, String host, int port) => true;
+    }
+  }
 Future<void> main() async{
+  // final logic = TaoDonLogic();
+  // print( logic.getRegionFromAddress("51 Nguyễn Trãi, Xã Đông Hội, Huyện Đông Anh, Hà Nội"));      // HCM
+  // print( logic.getRegionFromAddress("binh duog"));       // HCM
+  // print( logic.getRegionFromAddress("hcm"));             // HCM
+  // print( logic.getRegionFromAddress("32 Nguyễn Trãi, Phường Hàng Bạc, Quận Hoàn Kiếm, Hà Nội"));              // HCM
+  // print( logic.getRegionFromAddress("78 Phạm Văn Đồng, Xã Điện Hòa, Huyện Điện Bàn, Quảng Nam"));        // HCM
+  // print( logic.getRegionFromAddress("18 Phạm Văn Đồng, Xã Ia Kênh, Huyện Chư Păh, Gia Lai"));             // MT
+  // print( logic.getRegionFromAddress("đà nẵng"));         // MT
+  // print( logic.getRegionFromAddress("74 Nguyễn Trãi, Xã Mỹ Khánh, Huyện Phong Điền, Cần Thơ"));         // CT
+  // print( logic.getRegionFromAddress("51 Lê Lợi, Phường Hải Châu, Quận Hải Châu, Đà Nẵng"));
+  HttpOverrides.global = MyHttpOverrides();
+
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 
@@ -54,7 +75,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
 
-      // 🔥 DARK MODE
+      // DARK MODE
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,

@@ -11,11 +11,13 @@ import 'package:appqr1/models/BillTo.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../data/api_service.dart';
-import '../models/BillScreen.dart';
+import '../models/to_model.dart';
 import '../models/Oders_model.dart';
 import '../QuanLy/QuangLy_logic.dart';
-// import '../models/BillTo.dart';/
+import '../models/BillTo.dart';
+import '../models/appbar_logo.dart';
 
 
 class QuanLyScreen extends StatefulWidget {
@@ -61,22 +63,40 @@ class QuanLyScreenState extends State<QuanLyScreen> {
   List<OrderModel> allOrders = [];
   List<OrderModel> filteredList = [];
   final Set<String> _selectedTOs = {};
+  int currentPage = 1;
+  bool isLoading = false;
+  bool hasMore = true;
+  String keyword = ""; //du lieu search
+  int tongDon =0; //tonh he thon
+  int donInbound = 0; //tong don inbound
+  bool _isScanning = false;
 
+
+  List<OrderModel> orders = [];
+  Timer? _debounce;
   @override
   void initState() {
     super.initState();
-    loadData();
-    // refreshList();
-    loadOrders();
-    inboundCount();
+    loadPage(1);
   }
-  //lay du lieu tong don
+//load page
+  Future<void> loadPage(int page) async {
+    if (isLoading) return;
 
-  /// Tự động refresh khi quay lại màn hình
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    refreshList();
+    setState(() => isLoading = true);
+
+    final res = await ApiService.getOrderQL(page,keyword);
+    if (!mounted) return;
+    setState(() {
+      orders = res['orders'];   // 🔥 đúng data
+      currentPage = page;
+      isLoading = false;
+      hasMore = orders.length == 10;
+      if (keyword.isEmpty) {
+        tongDon = res['total'];
+        donInbound = res['inbound'];
+      }
+    });
   }
 
   /// Format thời gian hiển thị
@@ -85,21 +105,9 @@ class QuanLyScreenState extends State<QuanLyScreen> {
     final year = (time.year % 100).toString().padLeft(2,'0');
     return "$year/${time.month}/${time.day} ${time.hour}:${time.minute.toString().padLeft(2, '0')}";
   }
-//ham trung gian lay data tu logic sang UI
-  Future<void> loadData() async {
-    final data = await refreshList();
-    final total = await loadOrders();
-    final inbound = await inboundCount();
-
-    setState(() {
-      allOrders = data;
-      filteredList = data;
-      tongDon = total;
-      donInbound = inbound;
-    });
-  }
-
+  //ham tim kiem don hang
   Future<void> scanToSearch() async {
+    _isScanning = false;
     final scanController = MobileScannerController(
       detectionSpeed: DetectionSpeed.normal,
       facing: CameraFacing.back,
@@ -119,19 +127,36 @@ class QuanLyScreenState extends State<QuanLyScreen> {
               borderRadius: BorderRadius.circular(12),
               child: MobileScanner(
                 controller: scanController,
-                onDetect: (capture) {
-                  if (capture.barcodes.isEmpty) return;
+
+                  onDetect: (capture) async {
+                  if (_isScanning) return;
+
                   final code = capture.barcodes.first.rawValue?.trim() ?? '';
-                  if (code.isNotEmpty) {
-                    final keyword = code.toUpperCase();
-                    final result = search(allOrders, keyword);
-                    setState(() {
-                      searchController.text = keyword;
-                      filteredList = result;
-                    });
-                    scanController.dispose();
-                    Navigator.pop(context);
-                  }
+                  if (code.isEmpty) return;
+                  _isScanning = true;
+
+                  final keywordScan = code.toUpperCase();
+                  final result = search(orders, keyword);
+                  //set text dau tien
+                  setState(() {
+                    searchController.value = TextEditingValue(
+                      text: keywordScan,
+                      selection: TextSelection.collapsed(offset: keywordScan.length),
+                    );
+                    keyword = keywordScan;
+                  });
+                  //dong camera sau khi quet
+                  Navigator.pop(ctx);
+                  scanController.dispose();
+                  //goi api
+                  await loadPage(1);
+
+                  if (!mounted) return;
+
+                  setState(() {
+                    filteredList = search(orders, keyword);
+                  });
+
                 },
               ),
             ),
@@ -152,6 +177,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();   // QUAN TRỌNG
     searchController.dispose();
     super.dispose();
   }
@@ -165,65 +191,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
         child: Column(
           children: [
             // ── Header cam với logo SPX ──
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.orange[600],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                          ),
-                          label: const Text(
-                            'Quay lại',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ),
-                        const Spacer(),
-
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.inventory_2,
-                          size: 50,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'SPX Express',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+           HeaderWidget(),
 
             // ── Thanh tìm kiếm + nút quét ──
             Padding(
@@ -233,9 +201,20 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                   Expanded(
                     child: TextField(
                       controller: searchController,
-                      onChanged: (value) => setState(() {
-                        filteredList = search(allOrders, value);
-                      }),
+
+                      onChanged: (value) {
+                        if (_debounce?.isActive ?? false) {
+                          _debounce!.cancel();
+                        }
+                        _debounce = Timer(const Duration(milliseconds: 300), () {
+                          keyword = value;
+                          loadPage(1);
+                          if(!mounted) return;
+                          setState(() {
+                            filteredList = search(orders, value);
+                          });
+                        });
+                      },
                       decoration: InputDecoration(
                         hintText: 'Tìm mã đơn',
                         hintStyle: TextStyle(color: Colors.grey[400]),
@@ -268,6 +247,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
+                  //nut quet ma
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.orange[700],
@@ -297,7 +277,12 @@ class QuanLyScreenState extends State<QuanLyScreen> {
             ),
             // ── Bảng dữ liệu (kéo ngang được) ──
             Expanded(
+              child: RefreshIndicator(
+                  onRefresh: () async{
+                    await loadPage(1);
+                  },
               child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -305,14 +290,13 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                     border: TableBorder.all(color: Colors.grey[400]!, width: 1),
                     // defaultColumnWidth: const IntrinsicColumnWidth(),
                     columnWidths: {
-                      0: const FixedColumnWidth(160), //1 id
+                      0: const FixedColumnWidth(175), //1 id
                       1: const FixedColumnWidth(80),//3 NN
                       2: const FixedColumnWidth(50),//5 KG
                       3: const FixedColumnWidth(120,), //6tt
-                      4: const FixedColumnWidth(120,), // 7
-                      5: const FixedColumnWidth(120,), // 8
-                      6: const FixedColumnWidth(125),//ma to
-                      7: const FixedColumnWidth(60,), // 9
+                      4: const FixedColumnWidth(125,), // 7
+                      5: const FixedColumnWidth(150),//ma to
+                      6: const FixedColumnWidth(60,), // 9view
                     },
                     children: [
                       // Header row
@@ -320,17 +304,17 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                         decoration: BoxDecoration(color: Colors.orange[100]),
                         children: const [
                           _Header('Mã Đơn'),
-                          _Header('Nơi nhận'),
+                          _Header('Nơi đi'),
                           _Header('KG'),
                           _Header('Trạng Thái'),
-                          _Header('Thời Gian Tạo'),
                           _Header('T/Gian Đóng'),
                           _Header('Mã TO'),
                           _Header('View'),
                         ],
                       ),
                       // Data rows
-                      ...filteredList.map((o) {
+                      ...orders.map((o) {
+                        bool hasTO = o.maTO != null && o.maTO!.isNotEmpty;
                         // final isPacked = to.trangThai == 'Inbound';
                         return TableRow(
                           children: [
@@ -340,7 +324,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                             /// STATUS
                             Padding(
                               padding: const EdgeInsets.all(6),
-                              child: o.trangthai.isEmpty
+                              child: o.trangthai == null || o.trangthai!.isEmpty
                                   ? const SizedBox() // 🔥 trống hoàn toàn
                                   : Container(
                                 alignment: Alignment.center,
@@ -352,35 +336,49 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  o.trangthai,
+                                  o.trangthai!,
                                   style: const TextStyle(color: Colors.white),
                                 ),
                               ),
                             ),
 
-                            _Cell(formatTime(o.thoigiantao)),
+                            // _Cell(formatTime(o.thoigiantao)),
                             _Cell(o.thoigiandongbao != null
                                 ? formatTime(o.thoigiandongbao!)
                                 : '—'),
-                            _Cell(o.maTO),
+                            _Cell(o.maTO!),
                             /// VIEW
-                            Center(
-                              child: SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: InkWell(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => BillScreen(order: o),
-                                      ),
-                                    );
-                                  },
-                                  child: const Icon(Icons.visibility, color: Colors.blue),
-                                ),
+
+                        Center(
+                            child: SizedBox(
+                              width: 40,
+                              height: 40,
+                              child: InkWell(
+                                onTap: hasTO
+                                ? () {
+                                  final to = TOModel(
+                                    maTO: o.maTO!,
+                                    diaDiemGiaoHang: "",
+                                    packer: "",
+                                    totalWeight: o.soKi,
+                                    ngayTao: DateTime.now(),
+                                    completeTime: o.thoigiandongbao,
+                                    danhSachGoiHang: [],
+                                  );
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                    builder: (_) => BillTO(TO: to),
+                                    ),
+                                  );
+                                }
+                                    : null, // 🔥 disable nếu không có TO
+                                child: Icon(Icons.visibility, color: hasTO ? Colors.blue : Colors.grey, // 🔥 đổi màu),
                               ),
                             ),
+                            ),
+                        ),
                           ],
                         );
                       }),
@@ -388,7 +386,29 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                   ),
                 ),
               ),
+              ),
             ),
+            //nut chuyen trang
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: currentPage > 1
+                      ? () => loadPage(currentPage - 1)
+                      : null,
+                ),
+
+                Text("Trang $currentPage"),
+
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: hasMore
+                      ? () => loadPage(currentPage + 1)
+                      : null,
+                ),
+              ],
+            )
           ],
         ),
       ),

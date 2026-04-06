@@ -12,10 +12,38 @@ import 'package:share_plus/share_plus.dart'; //mở menu share, gửi file sang 
 import 'package:flutter/rendering.dart';//Dùng cho: RenderRepaintBoundary để chụp
 import 'dart:typed_data'; //xử lý dữ liệu nhị phân (binary)
 
-class BillTO extends StatelessWidget {
+//data ko co san, goi api...
+class BillTO extends StatefulWidget {
   final TOModel TO;
-  final GlobalKey _billKey = GlobalKey();
+
   BillTO({super.key, required this.TO});
+
+  @override
+  State<BillTO> createState() => _BillTOState();
+}
+class _BillTOState extends State<BillTO> {
+  late TOModel to;
+  bool isLoaded = false;
+  @override
+  void initState() {
+    super.initState();
+    // _loadFullData();
+    to = widget.TO;
+    _loadFullData();
+  }
+
+  final GlobalKey _billKey = GlobalKey();
+
+  Future<void> _loadFullData() async {
+    final data = await ApiService.getOneTO(to.maTO);
+    print("API DATA: $data");
+    if (data != null && mounted) {
+      setState(() {
+        to = data;
+        isLoaded = true;
+      });
+    }
+  }
   //ham sahr
   Future<void> shareBill() async {
     try {
@@ -57,6 +85,9 @@ class BillTO extends StatelessWidget {
       thickness: 2,
       color: Colors.black,
     );
+    if (!isLoaded) {
+      return Center(child: CircularProgressIndicator());
+    }
     double w = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
@@ -93,25 +124,25 @@ class BillTO extends StatelessWidget {
                       // Barcode
                        BarcodeWidget(
                         barcode: Barcode.code128(),
-                        data: TO.maTO,
+                        data: to.maTO,
                         width: 250,
                         height: 70,
                         drawText: false,
                       ),
                         SizedBox(height: 5),
-                        _boldText("Mã TO: ${TO.maTO}"),
+                        _boldText("Mã TO: ${to.maTO}"),
                         SizedBox(height: 5),
-                        _boldText("Đến: ${TO.diaDiemGiaoHang}"),
+                        _boldText("Đến: ${to.diaDiemGiaoHang}"),
                         SizedBox(height: 5),
-                        _boldText("Packer: ${TO.packer}"),
+                        _boldText("Packer: ${to.packer}"),
                         SizedBox(height: 5),
-                        _boldText("Số lượng: ${TO.soLuongDonHang}"),
+                        _boldText("Số lượng: ${to.soLuongDonHang}"),
                       SizedBox(height: 5),
-                        _boldText("Số kí: ${TO.totalWeight}kg"),
+                        _boldText("Số kí: ${to.totalWeight.toStringAsFixed(1)}kg"),
                       SizedBox(height: 5),
-                        _boldText( "Ngày tạo: ${formatTime(TO.ngayTao)}"),
+                        _boldText( "Ngày tạo: ${formatTime(to.ngayTao)}"),
                         SizedBox(height: 5),
-                        _boldText( "Ngày Đóng: ${formatTime(TO.completeTime)}"),
+                        _boldText( "Ngày Đóng: ${formatTime(to.completeTime)}"),
                         ],
                       ),
                     ),
@@ -129,10 +160,10 @@ class BillTO extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             SizedBox(height: 20),
-                            _boldText("Đến: ${TO.diaDiemGiaoHang}"),
+                            _boldText("Đến: ${to.diaDiemGiaoHang}"),
                           SizedBox(height: 30),
                           QrImageView(
-                            data: TO.maTO,
+                            data: to.maTO,
                             size: 100,
                             ),
                           ],

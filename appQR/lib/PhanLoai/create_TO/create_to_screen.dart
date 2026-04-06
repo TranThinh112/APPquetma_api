@@ -9,14 +9,16 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../models/to_model.dart';
+import '../../models/to_model.dart';
 import 'create_to_logic.dart';
-import 'PhanLoaiScreen.dart';
-
+import '../PhanLoaiScreen.dart';
+import '../ketqua_to_Screen.dart';
+import '../../data/api_service.dart';
+//co witget
 class CreateTOScreen extends StatefulWidget {
   final TOModel? editTO;
-  final Map<String, dynamic>? user;
-  const CreateTOScreen({super.key, this.editTO, this.user});
+  final Map<String, dynamic> user;
+  const CreateTOScreen({super.key, this.editTO,required this.user});
 
   @override
   State<CreateTOScreen> createState() => _CreateTOScreenState();
@@ -35,13 +37,31 @@ class _CreateTOScreenState extends State<CreateTOScreen>
   final TextEditingController inputController = TextEditingController();
   final AudioPlayer player = AudioPlayer();
   final ImagePicker _picker = ImagePicker();
+  final AudioPlayer beepPlayer = AudioPlayer();
+  final AudioPlayer errorPlayer = AudioPlayer();
+  bool _isShowingMessage = false;
+  DateTime _lastMessageTime = DateTime.now();
+  String _holdingCode = "";
+  DateTime _holdingStart = DateTime.now();
+  Timer? _duplicateTimer;
+  String _pendingDuplicateCode = "";
+  bool _isProcessing = false;
 
   // Scanner tối ưu: unrestricted = quét liên tục, không chờ frame
   final MobileScannerController controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.unrestricted,
+    detectionSpeed: DetectionSpeed.normal, // ⚡ ổn định + không spam
     facing: CameraFacing.back,
+    torchEnabled: false,
     returnImage: false,
-    formats: [BarcodeFormat.qrCode, BarcodeFormat.ean13, BarcodeFormat.code128],
+
+    // hêm đủ format để scan nhanh hơn
+    formats: [
+      BarcodeFormat.qrCode,
+      BarcodeFormat.code128, // SPX thường dùng
+      BarcodeFormat.code39,
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+    ],
   );
 
   // Center message overlay
@@ -54,13 +74,22 @@ class _CreateTOScreenState extends State<CreateTOScreen>
   DateTime _lastScannedAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool isProcessing = false;
 
+
+  Future<void> _initTO() async {
+    await logic.initNewTO();
+    setState(() {});
+  }
   @override
   void initState() {
     super.initState();
     logic = CreateTOLogic(user: widget.user, editTO: widget.editTO);
+    beepPlayer.setReleaseMode(ReleaseMode.stop);
+    errorPlayer.setReleaseMode(ReleaseMode.stop);
 
-    // Cache audio trước để phát nhanh hơn
-    player.setSourceAsset('beep.mp3');
+    beepPlayer.setSource(AssetSource('beep.mp3'));
+    errorPlayer.setSource(AssetSource('error.mp3'));
+
+    _initTO();
 
     animationController = AnimationController(
       vsync: this,
@@ -69,19 +98,18 @@ class _CreateTOScreenState extends State<CreateTOScreen>
     animation = Tween<double>(begin: 0, end: 1).animate(animationController);
   }
 
-  // ── Audio ──
+  // ── tieng beep va erro  ──
 
-  Future<void> _playBeep() async {
+  void _playBeep() {
     try {
-      await player.stop();
-      await player.play(AssetSource('beep.mp3'));
+      beepPlayer.stop(); // ⚡ reset nhanh
+      beepPlayer.play(AssetSource('beep.mp3'));
     } catch (_) {}
   }
-
-  Future<void> _playErrorSound() async {
+  void _playErrorSound() {
     try {
-      await player.stop();
-      await player.play(AssetSource('error.mp3'));
+      errorPlayer.stop(); // ⚡ reset nhanh
+      errorPlayer.play(AssetSource('error.mp3'));
     } catch (_) {}
   }
 
@@ -100,172 +128,137 @@ class _CreateTOScreenState extends State<CreateTOScreen>
     });
   }
 
-  // ── Xử lý kết quả quét ──
 
-  Future<void> _handleScanResult(ScanResult result) async {
-    switch (result) {
-      case ScanResult.success:
-        await _playBeep(); // Beep NGAY khi thành công
-        _justSuccess = true;
-        _showCenterMessage('Thêm mã thành công', Colors.green);
-        setState(() {});
-        _scrollToTop();
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _justSuccess = false;
-        });
-        break;
-
-      case ScanResult.autoComplete:
-        await _playBeep();
-        _showCenterMessage('TO đã đầy tự động đóng TO', Colors.green);
-        setState(() {});
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) Navigator.pop(context);
-        break;
-
-      case ScanResult.empty:
-        _showCenterMessage('Mã trống vui lòng quét lại', Colors.orange);
-        break;
-      case ScanResult.invalidFormat:
-        _showCenterMessage('Mã không hợp lệ vui lòng quét lại', Colors.red);
-        await _playErrorSound();
-        break;
-      case ScanResult.duplicate:
-        _showCenterMessage('Mã đã quét rồi', Colors.red);
-        await _playErrorSound();
-        break;
-      case ScanResult.notFound:
-        _showCenterMessage('Không tìm thấy đơn hàng này', Colors.red);
-        await _playErrorSound();
-        break;
-      case ScanResult.wrongStation:
-        _showCenterMessage('Khác station thử lại', Colors.red);
-        await _playErrorSound();
-        break;
-      case ScanResult.overWeightNewTO:
-        await _playBeep(); // Đơn hàng đã được nhận vào TO mới
-        _showCenterMessage(
-            'TO cũ đã đóng tự tạo TO mới: ${logic.toId}', Colors.blue,
-            duration: const Duration(milliseconds: 1500));
-        setState(() {});
-        _scrollToTop();
-        break;
-      case ScanResult.maxItems:
-        _showCenterMessage(
-            'Đã đạt tối đa ${TOModel.maxGoiHang} gói hàng', Colors.red);
-        await _playErrorSound();
-        break;
-      case ScanResult.alreadyInTO:
-        _showCenterMessage('Mã này đã nằm trong TO khác', Colors.red);
-        await _playErrorSound();
-        break;
-    }
-  }
-
-  void _scrollToTop() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (listScrollController.hasClients) {
-        listScrollController.animateTo(0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut);
-      }
-    });
-  }
 
   // ── Camera barcode callback — delay 200ms chống trùng ──
-
-  void _handleBarcode(BarcodeCapture capture) async {
-    if (isProcessing) return;
+  Future<void> _handleBarcode(BarcodeCapture capture) async {
+    if (_isProcessing) return;
     if (capture.barcodes.isEmpty) return;
 
-    final barcode = capture.barcodes.first;
-    final newValue = barcode.rawValue?.trim() ?? "";
-    if (newValue.isEmpty) return;
+    final code = capture.barcodes.first.rawValue?.trim() ?? "";
+    if (code.isEmpty) return;
 
-    // Chống quét trùng liên tục
-    final now = DateTime.now();
-    if (newValue == _lastScannedCode &&
-        now.difference(_lastScannedAt).inMilliseconds < 500) {
-      return;
-    }
-    _lastScannedCode = newValue;
-    _lastScannedAt = now;
+    inputController.text = code;
 
-    isProcessing = true;
+    _isProcessing = true;
+
     try {
-      final result = await logic.processCode(newValue);
-      await _handleScanResult(result);
-    } catch (error) {
-      if (!_justSuccess) {
-        _showCenterMessage('Lỗi quét mã thử lại', Colors.red);
-        await _playErrorSound();
-      }
-    } finally {
-      // Delay 200ms — đủ chống duplicate, nhanh hơn cũ (600ms)
-      await Future.delayed(const Duration(milliseconds: 200));
-      isProcessing = false;
-    }
-  }
-
-  // ── Quét từ gallery ──
-
-  Future<void> _scanFromGallery() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return;
-
-    final BarcodeCapture? capture = await controller.analyzeImage(image.path);
-    if (capture != null && capture.barcodes.isNotEmpty) {
-      final barcode = capture.barcodes.first;
-      final newValue = barcode.rawValue?.trim() ?? "";
-      if (newValue.isNotEmpty) {
-        isProcessing = true;
-        try {
-          final result = await logic.processCode(newValue);
-          await _handleScanResult(result);
-        } finally {
-          isProcessing = false;
-        }
-        return;
-      }
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy mã hợp lệ trong ảnh.'),
-          backgroundColor: Colors.red,
-        ),
+      final response = await ApiService.scanOrder(
+        id: code,
+        maTO: logic.toId,
       );
+
+      if (response['success'] == true)  {
+        await Future.delayed(const Duration(milliseconds: 100));
+        final to = await ApiService.getOneTO(logic.toId);
+
+        if (to != null) {
+          setState(() {
+            logic.loadFromServer(to); // ✅ update trước
+          });
+
+          _playBeep();
+          _showCenterMessage('Thêm mã thành công', Colors.green);
+          inputController.clear();
+        } else {
+          _playErrorSound();
+          _showCenterMessage('Không load được TO', Colors.red);
+        }
+        //clear trong textfiel
+      } else {
+        //lay tjong bao tu BE
+        _playErrorSound();
+        _showCenterMessage(
+          response['message'] ?? 'Scan thất bại',
+          Colors.red,
+        );
+        inputController.clear();
+      }
+
+    } catch (e) {
+      print("loi real: $e");
+      _playErrorSound();
+      _showCenterMessage('Lỗi server', Colors.red);
     }
-    await _playErrorSound();
+
+    await Future.delayed(const Duration(milliseconds: 200));
+    _isProcessing = false;
   }
 
   // ── Nhập tay ──
-
   Future<void> _onManualInput() async {
-    final text = inputController.text.trim();
+    final text = inputController.text
+        .replaceAll(RegExp(r'\s+'), '')
+        .toUpperCase();
+
+    print("ID: $text");
+
     if (text.isNotEmpty) {
       FocusScope.of(context).unfocus();
-      isProcessing = true;
-      final result = await logic.processCode(text);
-      await _handleScanResult(result);
+      _isProcessing = true;
+
+      try {
+        final response = await ApiService.scanOrder(
+          id: text,
+          maTO: logic.toId,
+        );
+
+        if (response['success'] == true) {
+          final to = await ApiService.getOneTO(logic.toId);
+
+          if (to != null) {
+            setState(() {
+              logic.loadFromServer(to); // ✅ update trước
+            });
+
+            _playBeep();
+            _showCenterMessage('Thêm mã thành công', Colors.green);
+          } else {
+            _playErrorSound();
+            _showCenterMessage('Không load được TO', Colors.red);
+          }
+
+        } else {
+          _playErrorSound();
+          _showCenterMessage(
+            response['message'] ?? 'Scan thất bại',
+            Colors.red,
+          );
+        }
+
+      } catch (e) {
+        _playErrorSound();
+        _showCenterMessage('Lỗi server', Colors.red);
+      }
+
       inputController.clear();
-      isProcessing = false;
+      _isProcessing = false;
+
     } else {
       _showCenterMessage('Vui lòng nhập mã vào ô trống', Colors.orange);
     }
   }
-
   // ── Complete TO ──
 
-  Future<void> _completeAndCloseTo() async {
+  void _completeAndOpenResult() {
     if (logic.scannedCodes.isEmpty) {
       _showCenterMessage('Chưa quét gói hàng nào', Colors.orange);
       return;
     }
-    await logic.completeTO();
-    if (mounted) Navigator.pop(context);
-  }
+    final toData = logic.buildTOForView(); // 👉 tạo data hiển thị
 
+    logic.completeTO(); // ❌ không await
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TOResultScreen(
+            to: toData,
+           user: widget.user,
+        ),
+      ),
+    );
+  }
   @override
   void dispose() {
     controller.dispose();
@@ -286,8 +279,9 @@ class _CreateTOScreenState extends State<CreateTOScreen>
           children: [
             Column(
               children: [
+                buildHeader(),
+                const SizedBox(height: 5),
                 // ── Header cam ──
-                _buildHeader(),
                 // ── Nội dung chính ──
                 Expanded(
                   child: SingleChildScrollView(
@@ -297,11 +291,11 @@ class _CreateTOScreenState extends State<CreateTOScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildInfoRow(),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 1),
                         _buildInputRow(),
-                        const SizedBox(height: 24),
-                        _buildCameraPreview(),
                         const SizedBox(height: 10),
+                        _buildCameraPreview(),
+                        const SizedBox(height: 5),
                         Center(
                           child: Text('Quét Mã',
                               style: TextStyle(
@@ -313,11 +307,10 @@ class _CreateTOScreenState extends State<CreateTOScreen>
                                     ?.color,
                               )),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 5),
                         _buildScannedList(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 10),
                         _buildCompleteButton(),
-                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -327,15 +320,11 @@ class _CreateTOScreenState extends State<CreateTOScreen>
             _buildCenterMessageOverlay(),
           ],
         ),
-      ),
+    ),
     );
   }
-
-  // ══════════════════════════════════════
-  // UI Components
-  // ══════════════════════════════════════
-
-  Widget _buildHeader() {
+//appbar va logo, nut quay lai
+  Widget buildHeader() {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -353,15 +342,17 @@ class _CreateTOScreenState extends State<CreateTOScreen>
             child: Row(
               children: [
                 TextButton.icon(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    //pushandremove: di trang moi va xoa het duong di
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => PhanLoaiScreen(user: widget.user!),
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   label: const Text('Quay lại',
                       style: TextStyle(color: Colors.white, fontSize: 16)),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.photo_library, color: Colors.white),
-                  onPressed: _scanFromGallery,
                 ),
               ],
             ),
@@ -404,9 +395,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Station: ${logic.station}', style: style),
-            Text(
-                'Khối lượng: ${logic.tongKhoiLuong.toStringAsFixed(2)}/${TOModel.maxWeight} kg',
-                style: style),
+            Text('Khối lượng: ${logic.tongKhoiLuong.toStringAsFixed(2)}/${TOModel.maxWeight} kg', style: style),
           ],
         ),
         const SizedBox(height: 4),
@@ -493,28 +482,11 @@ class _CreateTOScreenState extends State<CreateTOScreen>
               MobileScanner(
                 controller: controller,
                 onDetect: _handleBarcode,
-              ),
-              AnimatedBuilder(
-                animation: animation,
-                builder: (context, child) {
-                  return Positioned(
-                    top: animation.value * 248,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 3,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.orange.withValues(alpha: 0),
-                            Colors.orange,
-                            Colors.orange.withValues(alpha: 0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                scanWindow: Rect.fromCenter(
+                  center: Offset(130, 130),
+                  width: 220,
+                  height: 220,
+                ),
               ),
               Center(
                 child: Icon(Icons.camera_alt_outlined,
@@ -527,13 +499,36 @@ class _CreateTOScreenState extends State<CreateTOScreen>
       ),
     );
   }
-
+  //build animation chay tu trai
+  Widget buildMarqueeText(String text) {
+    return ClipRect(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: -1.0, end: 1.0),
+        duration: const Duration(seconds: 3),
+        curve: Curves.linear,
+        builder: (context, value, child) {
+          return FractionalTranslation(
+            translation: Offset(value, 0),
+            child: child,
+          );
+        },
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        onEnd: () {}, // không loop để tránh lag
+      ),
+    );
+  }
   Widget _buildScannedList() {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
         child: Container(
-          height: 260,
+          height: 180,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.grey[50],
@@ -638,14 +633,27 @@ class _CreateTOScreenState extends State<CreateTOScreen>
                                 ),
                                 GestureDetector(
                                   onTap: () async {
-                                    await logic.removeItem(index);
-                                    if (!mounted) return;
+                                    final code = logic.scannedCodes[index].code;
+
+                                    // ✅ XÓA NGAY UI (KHÔNG CHỜ SERVER)
+                                    setState(() {
+                                      logic.scannedCodes.removeAt(index);
+                                    });
+
+                                    // nếu hết → thoát luôn
                                     if (logic.scannedCodes.isEmpty) {
-                                      // TO đã bị xóa vì hết đơn hàng
                                       Navigator.pop(context);
-                                      return;
                                     }
-                                    setState(() {});
+
+                                    // 👉 gọi API ngầm
+                                    final res = await ApiService.removeOrder(
+                                      id: code,
+                                      maTO: logic.toId,
+                                    );
+
+                                    if (!res) {
+                                      print("❌ remove fail");
+                                    }
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.only(left: 8),
@@ -671,7 +679,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: _completeAndCloseTo,
+        onPressed: _completeAndOpenResult,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.orange[600],
           foregroundColor: Colors.white,

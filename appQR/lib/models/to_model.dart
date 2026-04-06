@@ -47,63 +47,23 @@ class TOModel {
 
     // 🔥 CASE 1: STRING
     if (rawDsg is String) {
-      String cleaned = rawDsg.trim();
+      try {
+        final decoded = jsonDecode(rawDsg);
 
-      // TH1: JSON chuẩn
-      if (cleaned.startsWith('[')) {
-        try {
-          final decoded = jsonDecode(cleaned);
+        if (decoded is List) {
           listGoiHang = decoded.map<Map<String, dynamic>>((e) {
-            return {
-              'code': e['code'],
-              'weight': (e['weight'] ?? 0).toDouble(),
-            };
+            return Map<String, dynamic>.from(e); // ✅ GIỮ NGUYÊN KEY
           }).toList();
-        } catch (e) {
-          listGoiHang = [];
         }
-      }
-      // format lỗi {code:..., weight:...}
-      else if (cleaned.contains('code') && cleaned.contains('weight')) {
-        final regex = RegExp(r'code:\s*([A-Z0-9]+).*?weight:\s*(\d+\.?\d*)');
-
-        final matches = regex.allMatches(cleaned);
-
-        listGoiHang = matches.map((m) {
-          return {
-            'code': m.group(1),
-            'weight': double.parse(m.group(2)!),
-          };
-        }).toList();
-      }
-
-      // ⚠️ TH3: DB cực cũ "SPX1,SPX2"
-      else {
-        listGoiHang = cleaned.isEmpty
-            ? []
-            : cleaned.split(',').map((e) {
-          return {
-            'code': e.trim(),
-            'weight': 0.0,
-          };
-        }).toList();
+      } catch (e) {
+        listGoiHang = [];
       }
     }
 
     // 🔥 CASE 2: LIST
     else if (rawDsg is List) {
       listGoiHang = rawDsg.map<Map<String, dynamic>>((e) {
-        if (e is Map) {
-          return {
-            'code': e['code'],
-            'weight': (e['weight'] ?? 0).toDouble(),
-          };
-        } else {
-          return {
-            'code': e.toString(),
-            'weight': 0.0,
-          };
-        }
+        return Map<String, dynamic>.from(e); // ✅ GIỮ NGUYÊN
       }).toList();
     }
 

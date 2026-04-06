@@ -21,23 +21,23 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.8  # Icon kiểu iOS (Cupertino style)
 
-  url_launcher: ^6.3.2
-  mobile_scanner: ^7.2.0
-  audioplayers: ^6.1.0
-  image_picker: ^1.1.2
-  intl: ^0.19.0
-  sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.4.0
-  path: ^1.8.3
-  http: ^1.2.0
-  qr_flutter: ^4.1.0
-  barcode_widget: ^2.0.3
-  flutter_lints: ^6.0.0
-  dotted_line: ^3.2.2
-  share_plus: ^7.2.1
-  path_provider: ^2.1.2
+  url_launcher: ^6.3.2    # Mở URL (web, tel, mail, app ngoài)
+  mobile_scanner: ^7.2.0 # Quét QR / Barcode bằng camera
+  audioplayers: ^6.1.0    # Phát âm thanh (mp3, wav...)
+  image_picker: ^1.1.2 # Chọn ảnh từ gallery hoặc camera
+  intl: ^0.19.0    # Format ngày giờ, số, đa ngôn ngữ
+  path: ^1.8.3  # Xử lý đường dẫn file (join, normalize...)
+  http: ^1.2.0   # Gọi API (GET, POST...)
+  qr_flutter: ^4.1.0   # Tạo QR code hiển thị trên UI
+  barcode_widget: ^2.0.3   # Tạo barcode (EAN, Code128...)
+  flutter_lints: ^6.0.0  # Rule lint giúp code sạch, chuẩn
+  dotted_line: ^3.2.2 # Vẽ đường nét đứt (UI decoration)
+  share_plus: ^7.2.1   # Chia sẻ nội dung (text, file...)
+  path_provider: ^2.1.2   # Lấy thư mục hệ thống (cache, document..
+  #dùng xóa dấu triếng việt
+  diacritic: ^0.1.3
 
 
 
@@ -45,10 +45,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3

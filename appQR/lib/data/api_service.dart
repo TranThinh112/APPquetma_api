@@ -5,16 +5,17 @@ import '../models/to_model.dart';
 import '../models/Oders_model.dart';
 class ApiService {
 
-  static const String baseUrl = "https://server-production-fdce.up.railway.app";
+  static const String baseUrl = "https://server-production-7598.up.railway.app";
 
   /// lấy tất cả orders để đếm SL
   static Future<List<dynamic>> getOrders() async {
 
     final response = await http.get(
-      Uri.parse("$baseUrl/orders"),
+      Uri.parse("$baseUrl/orders/getIn4"),
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final json =jsonDecode(response.body);
+      return json['data'];
     }
 
     throw Exception("Failed to load orders");
@@ -24,32 +25,45 @@ class ApiService {
   static Future<Map<String, dynamic>?> getOrder(String id) async {
 
     final response = await http.get(
-      Uri.parse("$baseUrl/orders/$id"),
+      Uri.parse("$baseUrl/orders/getIn4?id=$id"),
     );
-
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+      if (data == null) return null;
+
+      //  nếu trả list → lấy phần tử đầu
+      final order = (data is Map && data['data'] != null && data['data'].isNotEmpty)
+          ? data['data'][0]
+          : null;
+      return order;
     }
     return null;
   }
-  //ấy dữ liệu cho page quản lý
-  static Future<List<OrderModel>> getOrderQL() async {
-    final response = await http.get(
-      Uri.parse("$baseUrl/orders"),
-    );
+  //ấy dữ liệu cho page quản lý/ tonhg don, lay du lieu theo page: 10d/1 page, search don hang
+  static Future<Map<String, dynamic>> getOrderQL(int page, String keyword) async {
+    final res = await http.get(Uri.parse("$baseUrl/orders/getIn4?page=$page&limit=10&keyword=$keyword"));
 
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+    if (res.statusCode == 200) {
+      final Map<String, dynamic> json = jsonDecode(res.body);
 
-      return data.map((e) => OrderModel.fromJson(e)).toList();
+      final List data = json['data']; // 🔥 lấy đúng key
+      final int total = json['total'];
+      final int inbound =json['inbound'];
+      return {
+        "orders": data.map((e) => OrderModel.fromJson(e)).toList(),
+        "total": total,
+        "inbound" : inbound,
+      };
     }
-
-    throw Exception("Failed to load orders");
+    return {
+      "orders": [],
+      "total": 0,
+    };
   }
   //lay don theo trang thai
   static Future<List<Map<String, dynamic>>> getStatusOrders(String trangThai) async{
     final response = await http.get(
-        Uri.parse("$baseUrl/orders/status/trangThai"),
+        Uri.parse("$baseUrl/orders/getIn4?trangThai=$trangThai"),
     );
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -57,39 +71,75 @@ class ApiService {
     }
     return [];
   }
-  //upload trang thai don hang
-  static Future<bool> updateOrderField(String code, String field, String value) async {
+
+  //upload trang thai don hang, thoi gian quet, maTO
+  static Future<Map<String, dynamic>> scanOrder({
+    required String id,
+    required String maTO,
+  }) async {
+    final url = Uri.parse("$baseUrl/orders/scan/$id");
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"maTO": maTO}),
+    );
+
+    print("STATUS: ${response.statusCode}");
+    print("BODY: ${response.body}");
+
     try {
-      final uri = Uri.parse(
-        '$baseUrl/orders/$code/$field/${Uri.encodeComponent(value)}',
-      );
-      final response = await http.put(uri);
-      return response.statusCode == 200;
+      final data = jsonDecode(response.body);
+
+      // ✅ chuẩn hóa response
+      if (response.statusCode == 200) {
+        return {
+          "success": true,
+          ...data,
+        };
+      } else {
+        return {
+          "success": false,
+          "message": data['message'] ?? 'Lỗi server',
+        };
+      }
     } catch (e) {
-      print('Update error: $e');
-      return false;
+      return {
+        "success": false,
+        "message": "Lỗi parse JSON",
+      };
     }
   }
-  // update trạng thái
-  // update trạng thái
-  static Future<bool> updatStatusOrders(String code, String status) {
-    return updateOrderField(code, "status", status);
-    //https://server-production-fdce.up.railway.app/orders/SPXVN06104737773/status/Inbound
+
+  //removedon hang
+  static Future<bool> removeOrder({required String id, required String maTO,}) async {
+    final url = Uri.parse("$baseUrl/orders/remove/$id");
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+    );
+
+    return response.statusCode == 200;
   }
 
-// update time scan
-  static Future<bool> updateTimeScanOrders(String code, String time) {
-    return updateOrderField(code, "timedong", time);
-    // https://server-production-fdce.up.railway.app/orders/SPXVN06104737773/timedong/2026-03-23 18:35:47
-
+  // taoj dodwn
+  static Future<bool> createOrder(OrderModel o) async {
+    try{
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders'),
+          headers: {"Content-Type": "application/json", },
+        body: jsonEncode(o.toJson())
+      );
+      return response.statusCode == 200 || response.statusCode ==201;
+    } catch(e){
+      return false;
+    }
   }
 
     //////////////     USER ////////////////
   // tìm user theo ID
-  static Future<Map<String, dynamic>?> getUser(
-      String username, {
-        String? password,
-      }) async {
+  static Future<Map<String, dynamic>?> getUser(String username, {String? password,}) async {
     try {
       // 🔥 build URL theo trường hợp
       String url = "$baseUrl/login/users/$username";
@@ -104,7 +154,7 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        if (data == null) return null;
+        if(response.statusCode != 200 ) return null;
 
         // nếu backend trả object
         if (data is Map<String, dynamic>) {
@@ -128,7 +178,7 @@ class ApiService {
   static Future<bool> updateUserPasswordOnServer(String username, String newPassword) async {
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/login/users/$username'),
+        Uri.parse('$baseUrl/repass/users/$username'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'password': newPassword}),
       );
@@ -136,12 +186,10 @@ class ApiService {
       if (response.statusCode == 200 || response.statusCode == 204) {
         return true;
       }
-
       if (response.statusCode == 404) {
         print('Server update: user not found $username');
         return false;
       }
-
       return false;
     } catch (e) {
       print('Server update exception: $e');
@@ -156,7 +204,7 @@ class ApiService {
   static Future<bool> uploadTO(TOModel to) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/TO_orders'),
+        Uri.parse('$baseUrl/TO'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'id': to.maTO, // Truyền luôn id = maTO để json-server dễ quản lý
@@ -180,7 +228,7 @@ class ApiService {
   static Future<bool> updateTO(TOModel to) async {
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/TO_orders/${to.maTO}'),
+        Uri.parse('$baseUrl/TO/${to.maTO}'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'maTO': to.maTO,
@@ -192,7 +240,9 @@ class ApiService {
           'completeTime': to.completeTime?.toIso8601String(),
           'totalWeight': to.totalWeight,
         }),
+
       );
+      print("TO RAW: ${to.danhSachGoiHang}");
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       return false;
@@ -202,7 +252,7 @@ class ApiService {
   /// Lấy tất cả TO từ server
   static Future<List<Map<String, dynamic>>> getAllTOsFromServer() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/TO_orders'));
+      final response = await http.get(Uri.parse('$baseUrl/TO'));
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -215,20 +265,43 @@ class ApiService {
 
   //lay To theo trang tahi
 static Future<List<Map<String, dynamic>>> getTOStatus (String trangThai) async{
-    final response = await http.get(Uri.parse("$baseUrl/TO_orders/status/$trangThai"));
+    final response = await http.get(Uri.parse("$baseUrl/TO?trangThai=$trangThai"));
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>(); //
     }
     return [];
 }
+
+
+//lay theo ma TO
+  static Future<TOModel?> getOneTO(String maTO) async {
+    final res = await http.get(Uri.parse("$baseUrl/TO?maTO=$maTO"));
+
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body);
+
+      print("BODY TYPE: ${body.runtimeType}");
+      print("BODY: $body");
+
+      // ✅ nếu là List
+      if (body is List && body.isNotEmpty) {
+        return TOModel.fromJson(body[0]);
+      }
+      // ✅ nếu là Map
+      if (body is Map<String, dynamic>) {
+        return TOModel.fromJson(body);
+      }
+    }
+
+    return null;
+  }
   /// Xóa TO trên server (dùng maTO làm ID)
   static Future<bool> deleteTOOnServer(String maTO) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/TO_orders/$maTO'),
-      );
-      return response.statusCode == 200 || response.statusCode == 204;
+      final uri = Uri.parse('$baseUrl/TO/$maTO');
+      final response = await http.delete(uri);
+      return response.statusCode == 200;
     } catch (e) {
       return false;
     }

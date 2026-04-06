@@ -6,14 +6,14 @@
 import 'package:appqr1/data/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../models/to_model.dart';
-import 'create_to_screen.dart';
+import '../../models/to_model.dart';
+import '../create_TO/create_to_screen.dart';
 import 'table_to_logic.dart';
-import '../models/BillTo.dart';
+import '../../models/BillTo.dart';
 
 class TableTOScreen extends StatefulWidget {
-  final Map<String, dynamic>? user;
-  const TableTOScreen({super.key, this.user});
+  final Map<String, dynamic> user;
+  const TableTOScreen({super.key, required this.user});
 
   @override
   State<TableTOScreen> createState() => _TableTOScreenState();
@@ -39,15 +39,13 @@ class _Header extends StatelessWidget {
 class _Cell extends StatelessWidget {
   final String text;
   const _Cell(this.text);
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(10),
-      child: Text(
+      child: SelectableText(
         text,
         textAlign: TextAlign.center,
-        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -58,37 +56,26 @@ class _TableTOScreenState extends State<TableTOScreen> {
   final TableTOLogic logic = TableTOLogic();
   // List<TOModel> filteredList = [];
   final TextEditingController searchController = TextEditingController();
-
+  int tongTO =0;
+  int toPacked = 0;
   @override
   void initState() {
     super.initState();
-    _refreshList();
-    loadtongTO();
-    TOpacked();
+    loadData();
   }
   //xuat UI toan bo TO dang co
-int tongTO =0;
-  void loadtongTO ()async{
-    final to = await ApiService.getAllTOsFromServer();
-    setState(() {
-      tongTO = to.length;
-    });
-  }
-  //lay tong TO da dongs
-  int tongTopacked = 0;
-
-  void TOpacked () async{
-    final to = await ApiService.getTOStatus("Packed");
-    setState(() {
-      tongTopacked = to?.length ?? 0;
-    });
-  }
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _refreshList();
-  }
+  Future<void> loadData() async {
+    await logic.refreshList();
+    final total = await sumTO();
+    final packed = await packedTO();
 
+    setState(() {
+      tongTO = total;
+      toPacked = packed;
+    });
+  }
+  //ham load lai page
   Future<void> _refreshList() async {
     await logic.refreshList();
     logic.search(searchController.text);
@@ -220,7 +207,7 @@ int tongTO =0;
                           TextStyle(color: Colors.white, fontSize: 16)),
                 ),
                 const Spacer(),
-                if (widget.user?['username'] == 'admin')
+                // if (widget.user?['username'] == 'admin')
                   IconButton(
                     icon: const Icon(Icons.delete_outline,
                         color: Colors.white),
@@ -309,159 +296,149 @@ int tongTO =0;
        children: [
          Text("Tổng TO: ${tongTO}"),
          const Spacer(),
-         Text("Đã Complete: ${tongTopacked}/${tongTO}"),
+         Text("Đã Complete: ${toPacked}/${tongTO}"),
        ],
      ),
    );
- }
+ }//build bang
   Widget _buildTable() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return RefreshIndicator(
+      onRefresh: _refreshList,
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Table(
-          border: TableBorder.all(color: Colors.grey[400]!, width: 1),
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          columnWidths: {
-            if (logic.isDeleteMode) 0: const FixedColumnWidth(30),//neu co xóa
-            (logic.isDeleteMode ? 1 : 0): const FixedColumnWidth(130),//id
-            (logic.isDeleteMode ? 2 : 1): const FixedColumnWidth(80),//Số lượng
-            (logic.isDeleteMode ? 3 : 2): const FixedColumnWidth(60),//đến
-            (logic.isDeleteMode ? 4 : 3): const FixedColumnWidth(90),//status
-            (logic.isDeleteMode ? 5 : 4): const FixedColumnWidth(45),//khối lượng
-            (logic.isDeleteMode ? 6 : 5): const FixedColumnWidth(70),//packer
-            (logic.isDeleteMode ? 7 : 6): const FixedColumnWidth(115),//time create
-            (logic.isDeleteMode ? 8 : 7): const FixedColumnWidth(115),//tiem comple
-            (logic.isDeleteMode ? 9 : 8): const FixedColumnWidth(52),//view
-            (logic.isDeleteMode ? 10 : 9): const FixedColumnWidth(50),
-          },
-          children: [
-            // Header row
-            TableRow(
-              decoration: BoxDecoration(color: Colors.orange[100]),
-              children: [
-                if (logic.isDeleteMode)
-                  const SizedBox(width: 40),
-                _Header('Mã TO'),
-                _Header('Số lượng'),
-                _Header('Đến'),
-                _Header('Trạng thái'),
-                _Header('KG'),
-                _Header('Packer'),
-                _Header('Thời Gian Tạo'),
-                _Header('T/Gian Đóng'),
-                _Header('View'),
-                _Header('Sửa'),
-
-              ],
-            ),
-            // Data rows
-            ...logic.filteredList.map((t) {
-              // final isPacked = to.trangThai == 'Inbound';
-              return TableRow(
-                children: [
-                  if (logic.isDeleteMode)
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() => logic.toggleSelect(t.maTO));
-                          },
-                          borderRadius: BorderRadius.circular(4),
-                          splashColor: Colors.blue.withOpacity(0.3),
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: logic.selectedTOs.contains(t.maTO)
-                                    ? Colors.red
-                                    : Colors.grey[400]!,
-                                width: 2,
-                              ),
-                              color: logic.selectedTOs.contains(t.maTO)
-                                  ? Colors.red
-                                  : Colors.transparent,
-                            ),
-                            child: logic.selectedTOs.contains(t.maTO)
-                                ? const Icon(Icons.check,
-                                size: 14, color: Colors.white)
-                                : null,
-                          ),
-                        ),
-                      ),
-                    ),
-                  _Cell(t.maTO),
-                  _Cell('${t.soLuongDonHang}'),
-                  _Cell(t.diaDiemGiaoHang),
-                  /// STATUS
-                  Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: t.trangThai.isEmpty
-                        ? const SizedBox() // 🔥 trống hoàn toàn
-                        : Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      decoration: BoxDecoration(
-                        color: t.trangThai == 'Packed'
-                            ? Colors.green
-                            : Colors.red,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        t.trangThai,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                  //khoi luong
-                  _Cell(t.totalWeight.toStringAsFixed(1)),
-                  _Cell(t.packer.isEmpty ? '—' : t.packer),
-
-                  _Cell(formatTime(t.ngayTao)),
-                  _Cell(t.completeTime != null
-                      ? formatTime(t.completeTime!)
-                      : '—'),
-                  /// VIEW
-                  Center(
-                    child: SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => BillTO(TO: t),
-                            ),
-                          );
-                        },
-                        child: const Icon(Icons.visibility, color: Colors.blue),
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: InkWell(
-                        onTap: () => _editTO(t),
-                        child: const Icon(Icons.edit, color: Colors.orange),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }
-            ),
-          ],
+        physics: const AlwaysScrollableScrollPhysics(), // QUAN TRỌNG
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Table(
+            border: TableBorder.all(color: Colors.grey[400]!, width: 1),
+            defaultColumnWidth: const IntrinsicColumnWidth(),
+            columnWidths: {
+              if (logic.isDeleteMode) 0: const FixedColumnWidth(30),
+              (logic.isDeleteMode ? 1 : 0): const FixedColumnWidth(160),
+              (logic.isDeleteMode ? 2 : 1): const FixedColumnWidth(80),
+              (logic.isDeleteMode ? 3 : 2): const FixedColumnWidth(60),
+              (logic.isDeleteMode ? 4 : 3): const FixedColumnWidth(90),
+              (logic.isDeleteMode ? 5 : 4): const FixedColumnWidth(55),
+              (logic.isDeleteMode ? 6 : 5): const FixedColumnWidth(70),
+              (logic.isDeleteMode ? 7 : 6): const FixedColumnWidth(120),
+              (logic.isDeleteMode ? 8 : 7): const FixedColumnWidth(120),
+              (logic.isDeleteMode ? 9 : 8): const FixedColumnWidth(55),
+              (logic.isDeleteMode ? 10 : 9): const FixedColumnWidth(50),
+            },
+            children: [
+              _buildHeaderRow(),
+              ...logic.filteredList.map((t) => _buildTableRow(t)),
+            ],
+          ),
         ),
       ),
     );
   }
+  //build header
+  TableRow _buildHeaderRow() {
+    return TableRow(
+      decoration: BoxDecoration(color: Colors.orange[100]),
+      children: [
+        if (logic.isDeleteMode) const SizedBox(),
+        _Header('Mã TO'),
+        _Header('SL'),
+        _Header('Đến'),
+        _Header('Status'),
+        _Header('KG'),
+        _Header('Packer'),
+        _Header('Thời Gian Tạo'),
+        _Header('T/Gian Đóng'),
+        _Header('View'),
+        _Header('Sửa'),
+      ],
+    );
+  }
+  //build cot
+TableRow _buildTableRow(TOModel t) {
+  return TableRow(
+    children: [
+      if (logic.isDeleteMode)
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: InkWell(
+            onTap: () {
+              setState(() => logic.toggleSelect(t.maTO));
+            },
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: logic.selectedTOs.contains(t.maTO)
+                      ? Colors.red
+                      : Colors.grey,
+                ),
+                color: logic.selectedTOs.contains(t.maTO)
+                    ? Colors.red
+                    : Colors.transparent,
+              ),
+              child: logic.selectedTOs.contains(t.maTO)
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+          ),
+        ),
+
+      _Cell(t.maTO),
+      _Cell('${t.soLuongDonHang}'),
+      _Cell(t.diaDiemGiaoHang),
+
+      Padding(
+        padding: const EdgeInsets.all(6),
+        child: t.trangThai.isEmpty
+            ? const SizedBox()
+            : Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: t.trangThai == 'Packed'
+                ? Colors.green
+                : Colors.red,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            t.trangThai,
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      ),
+
+      _Cell(t.totalWeight.toStringAsFixed(1)),
+      _Cell(t.packer.isEmpty ? '—' : t.packer),
+      _Cell(formatTime(t.ngayTao)),
+      _Cell(t.completeTime != null
+          ? formatTime(t.completeTime!)
+          : '—'),
+
+      Center(
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BillTO(TO: t),
+              ),
+            );
+          },
+          child: const Icon(Icons.visibility, color: Colors.blue),
+        ),
+      ),
+
+      Center(
+        child: InkWell(
+          onTap: () => _editTO(t),
+          child: const Icon(Icons.edit, color: Colors.orange),
+        ),
+      ),
+    ],
+  );
+}
+  // nut delete
   Widget _buildDeleteActions() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),

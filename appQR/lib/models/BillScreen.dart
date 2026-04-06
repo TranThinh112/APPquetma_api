@@ -13,6 +13,7 @@ import 'package:flutter/rendering.dart';//Dùng cho: RenderRepaintBoundary để
 import 'dart:typed_data'; //xử lý dữ liệu nhị phân (binary)
 
 
+//data co san ko update, luon co dinh
 class BillScreen extends StatelessWidget {
   final OrderModel order;
   //format gia tien
@@ -64,39 +65,24 @@ class BillScreen extends StatelessWidget {
         color: Colors.black,
     );
     double w = MediaQuery.of(context).size.width;
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: shareBill,
-          ),
-        ],
-        centerTitle: true,
-      ),
-      body: Center(
-      child: SingleChildScrollView(
+    return Material(
+      color: Colors.transparent,
         child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 500),
-            child: RepaintBoundary(
-              key: _billKey,
-             child: Container(
-              width: w * 0.9,   // 90% chiều ngang
-              padding: const EdgeInsets.fromLTRB(10,10,2,10),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black,width: 2.0,style: BorderStyle.solid),
-              ),
-
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          child: Container(
+          constraints: const BoxConstraints(maxWidth: 300),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 10),
                 // Barcode
-                  Center(
+                  Align(
+                    alignment: Alignment.center,
                     child: BarcodeWidget(
                       barcode: Barcode.code128(),
                       data: order.id,
@@ -107,7 +93,7 @@ class BillScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                    Center(
-                     child: _boldText("Mã TO: ${order.id}"),
+                     child: _boldText("Mã Vận Đơn: ${order.id}"),
                   ),
                   myDivider,
 
@@ -179,7 +165,7 @@ class BillScreen extends StatelessWidget {
                               "Ngày đặt:",
                               style: TextStyle(fontSize: 12),
                             ),
-                            _boldText(formatTime(order.thoigiantao)),
+                            _boldText(formatTime(order.thoigiantao!)),
                           ],
                         ),
                       ),
@@ -192,31 +178,51 @@ class BillScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       flex: 3,
-                      child: _boldText( "${formatter.format(order.giatien)} VND"),
+                      child: Row(
+                        children: [
+                          _boldText("${formatter.format(order.giatien)} VND"),
+                          //  GTC nếu > 3 triệu
+                          SizedBox(width: 5),
+                          if (order.giatien > 3000000) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                "GTC",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-
                     Container(
                       width: 2,
-                      height: 30, // 👈 set tay (đơn giản + ổn định)
+                      height: 30,
                       color: Colors.black,
                     ),
-                    // myVerticalDivider,
                     const SizedBox(width: 10),
                     Expanded(
                       flex: 2,
                       child: _boldText(
-                        "Khối lượng: ${order.soKi}kg"),
+                        "Khối lượng: ${order.soKi}kg",
+                      ),
                     ),
                   ],
                 ),
-            ],
-              ),
-        ),
-          ),
+              ],
             ),
           ),
         ),
-      ),
+        ),
     );
-  }
+  }//build
 }

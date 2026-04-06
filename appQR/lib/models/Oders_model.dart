@@ -3,16 +3,16 @@ class OrderModel {
   final String noigui;
   final String noinhan;
   final String sanpham;
-  final double soKi;
-  final String trangthai;
-  final DateTime thoigiantao;
+  double soKi;
+  final String? trangthai;
+  final DateTime? thoigiantao;
   final DateTime? thoigiandongbao;
   final String nguoigui;
   final String nguoinhan;
   final String diachigui;
   final String diachinhan;
   final int giatien;
-  final String maTO;
+  final String? maTO;
 
   OrderModel({
     required this.id,
@@ -20,17 +20,17 @@ class OrderModel {
     required this.noinhan,
     required this.sanpham,
     required this.soKi,
-    required this.trangthai,
-    required this.thoigiantao,
+    this.trangthai,
+    this.thoigiantao,
     this.thoigiandongbao,
     required this.nguoigui,
     required this.nguoinhan,
     required this.diachigui,
     required this.diachinhan,
     required this.giatien,
-    required this.maTO
+    this.maTO
   });
-
+//doc tu json
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
       id: json['id'] ?? '',
@@ -51,5 +51,33 @@ class OrderModel {
       giatien: int.tryParse(json['giaTien']?.toString() ?? '0') ?? 0,
       maTO: json['maTO'] ?? '',
     );
+  }
+  // // chuyen sang json
+  Map<String, dynamic> toJson() {
+    final data = {
+      "id": id,
+      "noiGui": noigui,
+      "noiNhan": noinhan,
+      "sanPham": sanpham,
+      "soKi": soKi,
+      "thoiGianTao": thoigiantao?.toIso8601String(),
+      "thoiGianDongBao": thoigiandongbao?.toIso8601String(),
+      "nguoiGui": nguoigui,
+      "nguoiNhan": nguoinhan,
+      "diaChiGui": diachigui,
+      "diaChiNhan": diachinhan,
+      "giaTien": giatien,
+    };
+    if (trangthai != null) data["trangThai"] = trangthai;
+    if (thoigiantao != null) {
+      data["thoiGianTao"] = thoigiantao!.toIso8601String();
+    }
+    if (thoigiandongbao != null) {
+      data["thoiGianDongBao"] =
+          thoigiandongbao!.toIso8601String();
+    }
+    if (maTO != null) data["maTO"] = maTO;
+
+    return data;
   }
 }

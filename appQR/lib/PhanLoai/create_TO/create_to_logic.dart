@@ -6,14 +6,14 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import '../models/to_model.dart';
-import '../data/api_service.dart';
+import '../../models/to_model.dart';
+import '../../data/api_service.dart';
 
 /// Model cho 1 item đã quét (mã đơn hàng)
 class ScannedItem {
   final String code;
   final DateTime timestamp;
-  final double weight;
+  double weight;
 
   ScannedItem({
     required this.code,
@@ -31,7 +31,6 @@ enum ScanResult {
   notFound,         // Không tìm thấy trên server
   wrongStation,     // Sai trạm / sort
   maxItems,         // Đạt tối đa số kiện
-  autoComplete,     // Tự động đóng TO (đủ 10kg hoặc 5/5)
   overWeightNewTO,  // Vượt cân → đóng TO cũ + tạo TO mới chứa đơn này
   alreadyInTO,      // Mã đã nằm trong TO khác rồi
 }
@@ -40,6 +39,7 @@ enum ScanResult {
 class CreateTOLogic {
   // ── State ──
   final List<ScannedItem> scannedCodes = [];
+  final Set<String> scannedSet = {};
   double tongKhoiLuong = 0;
   String station = "";
   String _stationBanDau = "";
@@ -70,122 +70,62 @@ class CreateTOLogic {
         editTO.danhSachGoiHang.asMap().entries.map((entry) {
           final item = entry.value;
           return ScannedItem(
-            code: item['code'],
+            code: item['orderID'] ?? '',
             timestamp: DateTime.now().subtract(Duration(seconds: entry.key)),
-            weight: (item['weight'] ?? 0).toDouble(),
+            weight: (item['soKI'] ?? 0).toDouble(),
           );
         }),
       );
     } else {
       // Tạo mới
-      toId = _generateTOId();
-      createdAt = DateTime.now();
-      _saveTOToDatabase(isNew: true);
+      // _initNewTO();
+      // toId = _generateTOId();
+      // createdAt = DateTime.now();
+      // _saveTOToDatabase(isNew: true);
     }
   }
 
+  Future<void> initNewTO() async {
+    toId = _generateTOId();
+    createdAt = DateTime.now();
+
+    await _saveTOToDatabase(isNew: true); // luu to vao data
+  }
   /// Sinh mã TO: TO + yyMMdd + 4 ký tự ngẫu nhiên
   String _generateTOId() {
     final dateStr = DateFormat('yyMMdd').format(DateTime.now());
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final rng = Random();
     final rand = String.fromCharCodes(
-      Iterable.generate(4, (_) => chars.codeUnitAt(rng.nextInt(chars.length))),
+      Iterable.generate(5, (_) => chars.codeUnitAt(rng.nextInt(chars.length))),
     );
     return 'TO$dateStr$rand';
   }
 
-  /// Validate mã SPX: phải khớp SPXVN06 + 8-10 chữ số
-  bool isValidSPX(String code) {
-    final regex = RegExp(r'^SPXVN06\d{8,10}$', caseSensitive: false);
-    return regex.hasMatch(code.trim());
-  }
 
+  // nhan date tu BE
+  void loadFromServer(TOModel to) {
+    scannedCodes.clear();
+
+    scannedCodes.addAll(
+      to.danhSachGoiHang.reversed.map((e) {
+        return ScannedItem(
+          code: e['orderId'] ?? '',
+          weight: (e['soKi'] ?? 0).toDouble(),
+          timestamp: DateTime.tryParse(e['thoiGianScan'] ?? '') ?? DateTime.now(),
+        );
+      }),
+    );
+
+    tongKhoiLuong = to.totalWeight ?? 0;
+    station = to.diaDiemGiaoHang ?? "";
+  }
   /// Xử lý mã quét — trả về kết quả để UI phản hồi
   ///
   /// Logic trọng lượng:
   ///   - Vừa đủ 10kg → thêm vào + đóng TO
   ///   - Vượt 10kg → đóng TO hiện tại + tạo TO mới + nhét đơn vào TO mới
   ///   - 5/5 kiện → đóng TO
-  Future<ScanResult> processCode(String code) async {
-    code = code.trim().toUpperCase();
-
-    if (code.isEmpty) return ScanResult.empty;
-    if (!isValidSPX(code)) return ScanResult.invalidFormat;
-    if (scannedCodes.any((item) => item.code == code)) return ScanResult.duplicate;
-
-    // Kiểm tra mã đã nằm trong TO khác chưa (trong database)
-    final existingTO = await _isCodeInAnyTO(code);
-    if (existingTO != null) return ScanResult.alreadyInTO;
-
-    // Gọi API tìm đơn hàng
-    final order = await ApiService.getOrder(code);
-    if (order == null) return ScanResult.notFound;
-
-    // Đọc dữ liệu từ API — field names: noiNhan (nơi nhận), soKi (số kí)
-    final orderStation = order['noiNhan']?.toString().trim() ?? "";
-    final itemWeight = double.tryParse(order['soKi'].toString()) ?? 0.0;
-
-    // Kiểm tra station — đơn đầu tiên set station, các đơn sau phải cùng station
-    if (_stationBanDau.isEmpty) {
-      _stationBanDau = orderStation;
-      station = orderStation;
-    }
-    if (orderStation != _stationBanDau) return ScanResult.wrongStation;
-
-    // Kiểm tra đã đạt tối đa 5 kiện chưa
-    if (scannedCodes.length >= TOModel.maxGoiHang) return ScanResult.maxItems;
-
-    // ── Kiểm tra trọng lượng ──
-    if (tongKhoiLuong + itemWeight > TOModel.maxWeight) {
-      // VƯỢT CÂN → đóng TO hiện tại (nếu có đơn) + tạo TO mới chứa đơn này
-      if (scannedCodes.isNotEmpty) {
-        await completeTO();
-      }
-      // Reset state → tạo TO mới
-      _resetForNewTO();
-      // Giữ station cũ (cùng trạm)
-      station = _stationBanDau;
-      // Thêm đơn hàng vào TO mới
-
-      final newItem = ScannedItem(
-        code: code,
-        timestamp: DateTime.now(),
-        weight: itemWeight,
-      );
-
-      scannedCodes.insert(0, newItem);
-      tongKhoiLuong = itemWeight;
-
-      await _updateTOInDatabase();
-
-      return ScanResult.overWeightNewTO;
-    }
-
-    // ───────── ADD ITEM (CHUẨN) ─────────
-    final newItem = ScannedItem(
-      code: code,
-      timestamp: DateTime.now(),
-      weight: itemWeight,
-    );
-
-    scannedCodes.insert(0, newItem); //  chỉ add 1 lần
-    tongKhoiLuong += itemWeight;
-
-    //  LƯU NGAY SAU KHI SCAN
-    await _saveTOToDatabase(isNew: false);
-
-    await ApiService.updatStatusOrders(code, 'Inbound');
-
-    // Kiểm tra đã đầy chưa → auto complete (đúng 10kg hoặc 5/5)
-    if (scannedCodes.length >= TOModel.maxGoiHang ||
-        tongKhoiLuong >= TOModel.maxWeight) {
-      await completeTO();
-      return ScanResult.autoComplete;
-    }
-
-    return ScanResult.success;
-  }
 
   /// Reset state để tạo TO mới (giữ packer và station)
   void _resetForNewTO() {
@@ -199,45 +139,26 @@ class CreateTOLogic {
   }
 
   /// Xóa 1 item — nếu xóa hết → tự xóa TO khỏi hệ thống
-  Future<void> removeItem(int index) async {
-    if (index < 0 || index >= scannedCodes.length) return;
+  Future<TOModel?> removeItem(int index) async {
+    if (index < 0 || index >= scannedCodes.length) return null;
+
     final xoaStatus = scannedCodes[index];
-    //cap nhat trang thai outbound neu xoa don hang trong TO
-    await ApiService.updatStatusOrders(xoaStatus.code, 'Outbound');
-    tongKhoiLuong -= scannedCodes[index].weight;
-    scannedCodes.removeAt(index);
-    if (scannedCodes.isEmpty) {
-      // Xóa TO khỏi database khi không còn đơn hàng nào
-      await _deleteTOFromDatabase();
-    } else {
-      await _updateTOInDatabase();
+
+    final res = await ApiService.removeOrder(
+      id: xoaStatus.code,
+      maTO: toId,
+    );
+
+    if (res == true) {
+      await Future.delayed(const Duration(milliseconds: 100)); // tránh race
+
+      return await ApiService.getOneTO(toId); // ✅ luôn trả data mới
     }
+
+    return null;
   }
 
   /// Kiểm tra mã đơn hàng đã nằm trong TO nào chưa (trừ TO hiện tại) bằng dữ liệu server
-  Future<String?> _isCodeInAnyTO(String code) async {
-    try {
-      final serverData = await ApiService.getAllTOsFromServer();
-      final allTOs = serverData.map((e) => TOModel.fromJson(e)).toList();
-      for (final to in allTOs) {
-        if (to.maTO == toId) continue; // Bỏ qua TO hiện tại
-        for (final item in to.danhSachGoiHang) {
-          if (item['code'] == code) {
-            return to.maTO;
-          }
-        }
-      }
-      print("CHECK CODE: $code");
-
-      for (final to in allTOs) {
-        for (final item in to.danhSachGoiHang) {
-        }
-      }
-    } catch (e) {
-      debugPrint('Lỗi kiểm tra trùng từ server: $e');
-    }
-    return null;
-  }
 
   /// Xóa TO khỏi server
   Future<void> _deleteTOFromDatabase() async {
@@ -283,13 +204,15 @@ class CreateTOLogic {
 
   Future<void> _saveTOToDatabase({bool isNew = false}) async {
     try {
+      print("API create TO: ${toId}");
       if (isNew) {
         await ApiService.uploadTO(_buildTOModel());
       } else {
         await ApiService.updateTO(_buildTOModel());
       }
+      print("tao thanh cong");
     } catch (e) {
-      debugPrint("Lỗi upload tạo TO: $e");
+      print("Lỗi upload tạo TO: $e");
     }
   }
 
@@ -300,5 +223,20 @@ class CreateTOLogic {
     } catch (e) {
       debugPrint("Lỗi update thay đổi: $e");
     }
+  }
+  TOModel buildTOForView() {
+    return TOModel(
+      maTO: toId,
+      danhSachGoiHang: scannedCodes.map((item) => {
+        'code': item.code,
+        'weight': item.weight,
+      }).toList(),
+      diaDiemGiaoHang: station,
+      trangThai: 'Packed',
+      packer: packer,
+      totalWeight: tongKhoiLuong,
+      ngayTao: createdAt,
+      completeTime: DateTime.now(),
+    );
   }
 }

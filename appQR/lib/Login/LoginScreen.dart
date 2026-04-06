@@ -12,8 +12,13 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController username = TextEditingController();
   final TextEditingController password = TextEditingController();
+  final _formkey = GlobalKey<FormState>();
+  final _formkeyForgot = GlobalKey<FormState>();
   final TextEditingController forgotUsernameController = TextEditingController();
   bool _isResettingPassword = false;
+  String? loginError;
+  String? forgotError;
+  String? forgotOK;
 
   @override
   void dispose() {
@@ -22,33 +27,19 @@ class _LoginPageState extends State<LoginPage> {
     forgotUsernameController.dispose();
     super.dispose();
   }
-  void _showTopSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating, // 👈 để nổi lên
-        margin: const EdgeInsets.only(
-          top: 50,
-          left: 20,
-          right: 20,
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 
   // Hàm xử lý Đăng nhập với Database
-  Future login() async {
+  void login() async {
     final String uName = username.text.trim();
     final String pass = password.text.trim();
-
-    if (uName.isEmpty || pass.isEmpty) {
-      _showTopSnackBar("Vui lòng nhập đầy đủ tài khoản và mật khẩu");
-      return;
+    //kiem tra co rỗng ko
+    if(!_formkey.currentState!.validate ()){
+        return;
     }
     // 2) Fallback API
     final user = await ApiService.getUser(uName, password: pass);
-
+      print("user: $uName");
+        print("pass: $pass");
     if (user != null) {
       Navigator.pushReplacementNamed(
         context,
@@ -56,32 +47,40 @@ class _LoginPageState extends State<LoginPage> {
         arguments: user,
       );
     } else {
-      _showTopSnackBar("Sai tài khoản hoặc mật khẩu");
+     setState(() {
+       loginError = "Sai tài khoản hoặc mật khẩu";
+     });
     }
   }
-
-  Future<void> _requestPasswordReset() async {
+//ham xu ly UI reset mat kahu
+  Future<void> _requestPasswordReset(Function setStateSheet) async {
     final String uName = forgotUsernameController.text.trim();
 
-    if (uName.isEmpty) {
-      _showTopSnackBar("Vui lòng nhập tên tài khoản");
-      return;
-    }
+    if (!_formkeyForgot.currentState!.validate()) return;
 
-    setState(() {
-      _isResettingPassword = true;
+    setStateSheet(() {
+      forgotError = null;
+      forgotOK = null;
     });
 
     try {
-      final localUser = await ApiService.getUser(uName);
-      var user = localUser;
+      final user = await ApiService.getUser(uName);
 
-      //  tìm trên server
-      if (user == null) {
-        _showTopSnackBar("Không tìm thấy tài khoản");
+      if (user == null || user["username"] == null) {
+        setStateSheet(() {
+          forgotError = "Không tìm thấy tài khoản";
+        });
+        _formkeyForgot.currentState!.validate();
         return;
       }
-      // Hiển thị dialog loading 2s khi xác thực thành công
+
+      // 🔥 bật loading
+      setStateSheet(() {
+        _isResettingPassword = true;
+      });
+
+      if (!mounted) return;
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -90,33 +89,43 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
 
-      await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
-      Navigator.of(context).pop();
+      // 🔥 GỌI API TRƯỚC
+      final bool serverUpdated =
+      await ApiService.updateUserPasswordOnServer(uName, '123456');
 
-      // Đồng bộ lên server
-      final bool serverUpdated = await ApiService.updateUserPasswordOnServer(uName, '123456');
+      // 🔥 đóng dialog SAU khi xong
+      if (mounted) Navigator.of(context).pop();
+      setStateSheet(() {
+        _isResettingPassword = false;
+      });
 
-      if (serverUpdated) {
-        _showTopSnackBar("Đã reset mật khẩu: 123456 cho $uName");
+      if (serverUpdated && mounted) {
+        setStateSheet(() {
+          forgotOK = "Đã reset mật khẩu cho $uName";
+        });
       } else {
-        _showTopSnackBar("Đã đổi password local thành công, nhưng server chưa cập nhật");
+        setStateSheet(() {
+          forgotError = "Reset thất bại";
+        });
       }
+      print("OK MESSAGE: $forgotOK");
 
     } catch (e) {
-      _showTopSnackBar("Lỗi khi lấy lại mật khẩu: $e");
+      // _showTopSnackBar("Lỗi: $e");
     } finally {
       if (mounted) {
-        setState(() {
+        setStateSheet(() {
           _isResettingPassword = false;
         });
       }
+      print("_isResettingPassword: $_isResettingPassword");
     }
   }
-
   void _showForgotPasswordSheet() {
     forgotUsernameController.clear();
-
+    forgotError = null;
+    forgotOK = null;
+    _isResettingPassword = false;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -124,55 +133,94 @@ class _LoginPageState extends State<LoginPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          left: 20, right: 20, top: 30,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Nhập tên tài khoản để xác thực",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: forgotUsernameController,
-              enabled: !_isResettingPassword,
-              decoration: InputDecoration(
-                hintText: "Nhập tên tài khoản",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                prefixIcon: const Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      builder: (context) => StatefulBuilder(
+          builder: (context, setStateSheet){
+            return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                  left: 20, right: 20, top: 30,
                 ),
-                onPressed: _isResettingPassword ? null : _requestPasswordReset,
-                child: _isResettingPassword
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text(
-                        "Xác thực và đặt lại",
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                child: Form(
+                  key: _formkeyForgot,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+
+                    children: [
+                      const Text(
+                        "Nhập tên tài khoản để xác thực",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-              ),
-            ),
-          ],
-        ),
+                      const SizedBox(height: 20),
+
+                      TextFormField(
+                          controller: forgotUsernameController,
+                          onChanged: (_) {
+                            if (forgotError != null || forgotOK != null) {
+                              setStateSheet(() {
+                                forgotError = null;
+                                forgotOK = null;
+                              });
+                            }
+                          },
+                          enabled: !_isResettingPassword,
+                          decoration: InputDecoration(
+                            hintText: "Nhập tên tài khoản",
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            prefixIcon: const Icon(Icons.person_outline),
+                          ),
+                          validator: (value){
+                            if(value == null || value.isEmpty){
+                              return "Vui lòng nhập tài khoản";
+                            }
+                            if( forgotError != null){
+                              return forgotError;
+                            }
+                            return null;
+                          }
+                      ),
+                      if (forgotOK != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Text(
+                            forgotOK!,
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: _isResettingPassword ? null : () => _requestPasswordReset(setStateSheet),
+                          child: _isResettingPassword
+                              ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                              : const Text(
+                            "Xác thực và đặt lại",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+            );
+            },
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -208,10 +256,12 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
             ),
-
+            //form dăng nhập
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 30),
-              child: Column(
+              child: Form(
+                key: _formkey,
+                child: Column(
                 children: [
                   const Text(
                     "Đăng Nhập",
@@ -220,27 +270,42 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 40),
                   
                   // Username field
-                  TextField(
+                  TextFormField(
                     controller: username,
                     decoration: InputDecoration(
                       labelText: "Tài Khoản",
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       prefixIcon: const Icon(Icons.person_outline),
+                      errorText: loginError,
                     ),
+                    validator: (value){
+                      if(value == null  || value.isEmpty){
+                        return 'Tài khoản không được để trống';
+                      }
+                      return null;
+                    }
                   ),
                   const SizedBox(height: 20),
                   
                   // Password field
-                  TextField(
+                  TextFormField(
                     controller: password,
-                    obscureText: true,
+                      obscureText: true,
                     decoration: InputDecoration(
                       labelText: "Mật Khẩu",
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       prefixIcon: const Icon(Icons.lock_outline),
-                    ),
-                  ),
 
+                      errorText:  loginError,
+                    ),
+                    validator: (value){
+                      if(value == null || value.isEmpty){
+                        return 'Mật khẩu không được để trống';
+                      }
+                      return null;
+                    }
+                  ),
+                    const SizedBox(height: 10,),
                   // Nút Quên mật khẩu
                   Align(
                     alignment: Alignment.centerRight,
@@ -253,7 +318,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
 
                   // Nút Đăng nhập
                   SizedBox(
@@ -273,6 +338,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   )
                 ],
+              ),
               ),
             )
           ],
