@@ -69,15 +69,37 @@ class _MyAppState extends State<MyApp> {
       isDarkMode = value;
     });
   }
-
+//định nghĩa màu
+  @override
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
 
+      // LIGHT MODE
+      theme: ThemeData(
+        colorScheme: ColorScheme.light(
+          primary: Colors.orange,          // màu chính SPX
+          secondary: Colors.orangeAccent,
+          surface: Colors.white// màu phụ
+        ),
+      ),
+
+
+
       // DARK MODE
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.dark(
+          primary: Colors.orange,        //  màu chính
+          secondary: Colors.orangeAccent,
+
+          surface: Colors.black,    // nền tối chuẩn
+          onSurface: Colors.white,       // chữ
+        ),
+      ),
+
+      //  bật/tắt dark mode của bạn
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
       home: const LoginPage(),

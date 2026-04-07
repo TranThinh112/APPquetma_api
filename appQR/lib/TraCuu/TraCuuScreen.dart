@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/Oders_model.dart';
-import '../models/BillScreen.dart';
+import '../BILL/BillScreen.dart';
 import '../models/appbar_logo.dart';
 import './TraCuu_logic.dart';
 
@@ -17,7 +17,7 @@ class TraCuuScreen extends StatefulWidget{
     @override
     _TraCuuScreenState createState() => _TraCuuScreenState();
 }
-//format du lie header
+//format du lieu hien thi trong header
 class _Header extends StatelessWidget {
   final String text;
   const _Header(this.text);
@@ -29,12 +29,14 @@ class _Header extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.bold),
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 }
-//format du lieu cot
+//format du lieu hien thi trong bang
 class _Cell extends StatelessWidget {
   final String text;
   const _Cell(this.text);
@@ -47,6 +49,7 @@ class _Cell extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         overflow: TextOverflow.ellipsis,
+        // style: const TextStyle(fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -131,12 +134,12 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
       }
     }).toList();
   }
-  //xử lý sự kiện users nhapaj
+  //xử lý sự kiện users nhapaj: 3 truong hop: ko dung dinh dang, ko ton tai, quet roi -> tra ket qua
   Future<void> _onManualInput() async {
     final input = searchController.text.trim();
 
     if (input.isEmpty) {
-      _showCenterMessage("Vui lòng nhập mã", Colors.orange);
+      _showCenterMessage("Vui lòng nhập mã",  Theme.of(context).colorScheme.primary);
       setState(() {
         allOrders.clear();
         filteredList.clear();
@@ -154,7 +157,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
         .toList();
 
     // ========================
-    // 🧪 1. VALIDATE FORMAT
+    //  1. VALIDATE FORMAT
     // ========================
     List<String> invalidCodes = [];
 
@@ -176,15 +179,14 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
     setState(() => isProcessing = true);
 
     // ========================
-    // 🚀 2. XỬ LÝ SONG SONG + GIỮ CHECK
-    // ========================
+    // 2. XỬ LÝ SONG SONG + GIỮ CHECK
     List<String> notFoundCodes = [];
 
     final results = await Future.wait(codes.map((code) async {
       final result = await logic.processCode(code);
 
       if (result == ScanResult.notFound) {
-        notFoundCodes.add(code); // 🔥giữ lại check
+        notFoundCodes.add(code); // giữ lại check
         return null;
       }
 
@@ -199,8 +201,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
     }));
 
     // ========================
-    // 🧪 3. CHECK NOT FOUND
-    // ========================
+    //  3. CHECK NOT FOUND
     if (notFoundCodes.isNotEmpty) {
       setState(() => isProcessing = false);
 
@@ -212,13 +213,10 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
       return;
     }
 
-
     //  LẤY KẾT QUẢ
+    List<OrderModel> tempOrders = results.whereType<OrderModel>().toList();
 
-    List<OrderModel> tempOrders =
-    results.whereType<OrderModel>().toList();
-
-    // 🔥 LOẠI TRÙNG
+    //  LOẠI TRÙNG
 
     final uniqueResult = uniqueList(tempOrders);
 
@@ -283,7 +281,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
       }
     });
   }
-
+//build nut quet ma
   Future<void> _scanToSearch() async {
     _isScanning = false;
     final scanController = MobileScannerController(
@@ -344,6 +342,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
       },
     );
   }
+//don witget ko su dung: o day xoa data tu textformfield khi doi trang
   @override
   void dispose() {
     searchController.dispose();
@@ -379,7 +378,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                     //nut quet mau cam
                      Container(
                       decoration: BoxDecoration(
-                        color: Colors.orange[700],
+                        color:  Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: IconButton(
@@ -398,6 +397,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 10), //thu vien 2 bên
                     child: SizedBox(
                       height: 200,
+                        //o nhap du lieu
                       child:  TextField(
                         controller: searchController,
                         maxLines: 5,
@@ -430,7 +430,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
                               width: 2,
-                              color: Colors.orange, // giữ màu SPX
+                              color:  Theme.of(context).colorScheme.primary, // giữ màu SPX
                             ),
                           ),
                         ),
@@ -440,7 +440,9 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                   SizedBox(height: 2),
                   Row(
                     children: [
-                      const SizedBox(width: 40),//khoang cach giua cac nut
+                      const SizedBox(width: 40),
+
+                      //nut xem
                       SizedBox(
                         width: 100,
                         height: 30,
@@ -453,8 +455,14 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                           ),
                           onPressed: () {
                             print("xem ok");
-                            if (filteredList.isEmpty) return;
+                            print("filteredList length: ${filteredList.length}");
+                            if (filteredList.isEmpty) {
+                              print("List rỗng ");
+                              return;
+                            }
+                            // filteredList danh sach da dc loc
                             final order = filteredList.first;
+                            print("order id: ${order.id} ");
                             showGeneralDialog(
                               context: context,
                               barrierDismissible: true,
@@ -484,69 +492,69 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                                             mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment: CrossAxisAlignment.stretch, //giãn theo chiều ngang
                                             children: [
-                                          SizedBox(height: 50),
+                                              SizedBox(height: 50),
                                               //  BILL (có thể nhiều cái)
-                                            ...filteredList.map((order) => Padding(
-                                                 padding: const EdgeInsets.only(bottom: 10),
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                          // bilL
-                                                  Container(
-                                                    padding: const EdgeInsets.all(3),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.black,
-                                                      borderRadius: BorderRadius.circular(14),
-                                                    ),
-                                                    child: Container(
+                                              ...filteredList.map((order) => Padding(
+                                                padding: const EdgeInsets.only(bottom: 10),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    // bilL
+                                                    Container(
+                                                      padding: const EdgeInsets.all(3),
                                                       decoration: BoxDecoration(
-                                                        color: Colors.white,
-                                                        borderRadius: BorderRadius.circular(12),
+                                                        color: Colors.black,
+                                                        borderRadius: BorderRadius.circular(14),
                                                       ),
+                                                      child: Container(
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white,
+                                                          borderRadius: BorderRadius.circular(12),
+                                                        ),
                                                         child: BillScreen(order: order),
                                                       ),
-                                                   ),
-                                                      SizedBox(height: 10),
-                                                      // mã đơn ở mõi bill
-                                                      Padding(
-                                                        padding: const EdgeInsets.only(left: 4, bottom: 4),
-                                                        child: Text(
-                                                          order.id,
-                                                          style: const TextStyle(
-                                                            fontWeight: FontWeight.bold,
-                                                            fontSize: 14,
-                                                          ),
+                                                    ),
+                                                    SizedBox(height: 10),
+                                                    // mã đơn ở mõi bill
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(left: 4, bottom: 4),
+                                                      child: Text(
+                                                        order.id,
+                                                        style: const TextStyle(
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 14,
                                                         ),
                                                       ),
-                                                    ],
-                                                  ),
+                                                    ),
+                                                  ],
                                                 ),
+                                              ),
                                               ),
                                               //nut xem trong TO
                                               Container(
-                                                child: Padding(
-                                                  padding: const EdgeInsets.only(left: 4, bottom: 4),
-                                                  child:  ElevatedButton(
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.orange, // màu
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(10), // bo góc
-                                                      ),
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.only(left: 4, bottom: 4),
+                                                    child:  ElevatedButton(
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor:  Theme.of(context).colorScheme.primary, // màu
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(10), // bo góc
+                                                          ),
+                                                        ),
+                                                        onPressed: (){
+                                                          // print("xem ok")
+                                                          Navigator.pop(context);
+                                                        },
+                                                        child: Text(
+                                                          "OK",
+                                                          style: TextStyle(
+                                                            fontSize: 16,
+                                                            color: Colors.black,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        )
                                                     ),
-                                                    onPressed: (){
-                                                      // print("xem ok")
-                                                     Navigator.pop(context);
-                                                    },
-                                                    child: Text(
-                                                      "OK",
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        color: Colors.black,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    )
-                                                ),
-                                              )
+                                                  )
                                               ),
                                             ],
                                           ),
@@ -592,13 +600,14 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                       //     ),
                       //   ),
                       // ),
+                      //nut comfirm
                       const SizedBox(width: 90),  //khoang cach giua cac nut
                       SizedBox(
                         width: 120,
                         height: 30,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange, // màu
+                            backgroundColor:  Theme.of(context).colorScheme.primary, // màu
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10), // bo góc
                             ),
@@ -636,13 +645,14 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
   }
 //UI thanh thong tin
   Widget _buildIn4Orders(){
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Table(
-            border: TableBorder.all(color: Colors.grey[400]!, width: 1),
+            border: TableBorder.all(color: isDark ? Colors.white! : Colors.black!, width: 1),
             defaultColumnWidth: const IntrinsicColumnWidth(),
             columnWidths: {
               0: const FixedColumnWidth(160), //1 id
@@ -659,7 +669,7 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
             children: [
               // Header row
               TableRow(
-                decoration: BoxDecoration(color: Colors.orange[100]),
+                decoration: BoxDecoration(color: isDark ? Colors.orange[500] : Colors.orange[200]),
                 children: const [
                   _Header('Mã Đơn'),
                   _Header('Nơi đi'),

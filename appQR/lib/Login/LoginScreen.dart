@@ -129,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor:  Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
@@ -196,7 +196,7 @@ class _LoginPageState extends State<LoginPage> {
                         height: 50,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
+                            backgroundColor:  Theme.of(context).colorScheme.primary,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: _isResettingPassword ? null : () => _requestPasswordReset(setStateSheet),
@@ -225,7 +225,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -233,8 +233,8 @@ class _LoginPageState extends State<LoginPage> {
             Container(
               width: double.infinity,
               height: 220,
-              decoration: const BoxDecoration(
-                color: Colors.orange,
+              decoration:  BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
@@ -242,7 +242,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children:  [
                   Icon(Icons.inventory_2, size: 60, color: Colors.white),
                   SizedBox(height: 10),
                   Text(
@@ -268,7 +268,7 @@ class _LoginPageState extends State<LoginPage> {
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 40),
-                  
+
                   // Username field
                   TextFormField(
                     controller: username,
@@ -286,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
                     }
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Password field
                   TextFormField(
                     controller: password,
@@ -313,7 +313,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _showForgotPasswordSheet,
                       child: Text(
                         "Quên mật khẩu?",
-                        style: TextStyle(color: Colors.orange[900], fontWeight: FontWeight.w500),
+                        style: TextStyle(color:  Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ),
@@ -326,7 +326,7 @@ class _LoginPageState extends State<LoginPage> {
                     height: 55,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
+                        backgroundColor:  Theme.of(context).colorScheme.primary,
                         elevation: 3,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),

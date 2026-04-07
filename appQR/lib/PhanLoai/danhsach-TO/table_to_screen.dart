@@ -9,7 +9,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../models/to_model.dart';
 import '../create_TO/create_to_screen.dart';
 import 'table_to_logic.dart';
-import '../../models/BillTo.dart';
+import '../../BILL/BillTo.dart';
+import '../ketqua_to_Screen.dart';
 
 class TableTOScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -42,7 +43,7 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(13),
       child: SelectableText(
         text,
         textAlign: TextAlign.center,
@@ -51,13 +52,13 @@ class _Cell extends StatelessWidget {
   }
 }
 
-
 class _TableTOScreenState extends State<TableTOScreen> {
   final TableTOLogic logic = TableTOLogic();
   // List<TOModel> filteredList = [];
   final TextEditingController searchController = TextEditingController();
   int tongTO =0;
   int toPacked = 0;
+
   @override
   void initState() {
     super.initState();
@@ -81,7 +82,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
     logic.search(searchController.text);
     setState(() {});
   }
-
+//ham serch dung cho thanh Textfield
   void _search(String keyword) {
     logic.search(keyword);
     setState(() {});
@@ -95,13 +96,18 @@ class _TableTOScreenState extends State<TableTOScreen> {
 
   /// Mở CreateTOScreen ở chế độ chỉnh sửa
   void _editTO(TOModel to) async {
-    final isAdmin = widget.user?['username'] == 'admin';
-    final isPacked = to.trangThai == 'Packed';
+    final fullTO = await ApiService.getOneTO(to.maTO);
+
+    if(fullTO == null) return;
 
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CreateTOScreen(editTO: to, user: widget.user),
+        builder: (_) => CreateTOScreen(
+            // to: fullTO,
+            editTO: fullTO,
+            user: widget.user
+        ),
       ),
     );
     _refreshList();
@@ -130,8 +136,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
                 controller: scanController,
                 onDetect: (capture) {
                   if (capture.barcodes.isEmpty) return;
-                  final code =
-                      capture.barcodes.first.rawValue?.trim() ?? '';
+                  final code = capture.barcodes.first.rawValue?.trim() ?? '';
                   if (code.isNotEmpty) {
                     searchController.text = code.toUpperCase();
                     _search(code.toUpperCase());
@@ -180,12 +185,13 @@ class _TableTOScreenState extends State<TableTOScreen> {
       ),
     );
   }
-  //UI
+
+  //build header
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.orange[600],
+        color:  Theme.of(context).colorScheme.primary,
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(24),
           bottomRight: Radius.circular(24),
@@ -208,13 +214,13 @@ class _TableTOScreenState extends State<TableTOScreen> {
                 ),
                 const Spacer(),
                 // if (widget.user?['username'] == 'admin')
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        color: Colors.white),
-                    onPressed: () {
-                      setState(() => logic.toggleDeleteMode());
-                    },
-                  ),
+                //   IconButton(
+                //     icon: const Icon(Icons.delete_outline,
+                //         color: Colors.white),
+                //     onPressed: () {
+                //       setState(() => logic.toggleDeleteMode());
+                //     },
+                //   ),
               ],
             ),
           ),
@@ -236,7 +242,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
       ),
     );
   }
-//thanh timf kieems vaf camera
+//thanh timf kieems vaf nut quet ma
   Widget _buildSearchBar(bool isDark) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -250,7 +256,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
                 hintText: 'Tìm mã TO...',
                 hintStyle: TextStyle(color: Colors.grey[400]),
                 prefixIcon:
-                    Icon(Icons.search, color: Colors.orange[600]),
+                    Icon(Icons.search, color:  Theme.of(context).colorScheme.primary),
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(
@@ -259,7 +265,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(color: Colors.grey[400]!),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -275,7 +281,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
           const SizedBox(width: 10),
           Container(
             decoration: BoxDecoration(
-              color: Colors.orange[700],
+              color:  Theme.of(context).colorScheme.primary,
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(
@@ -289,6 +295,7 @@ class _TableTOScreenState extends State<TableTOScreen> {
     );
 
 }
+//build text tong
  Widget _buildTextTong(){
     return Padding(
        padding: const EdgeInsets.all(12),
@@ -300,8 +307,11 @@ class _TableTOScreenState extends State<TableTOScreen> {
        ],
      ),
    );
- }//build bang
+ }
+ //build danh sach bang
   Widget _buildTable() {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return RefreshIndicator(
       onRefresh: _refreshList,
       child: SingleChildScrollView(
@@ -309,13 +319,13 @@ class _TableTOScreenState extends State<TableTOScreen> {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Table(
-            border: TableBorder.all(color: Colors.grey[400]!, width: 1),
+            border: TableBorder.all(color: isDark ? Colors.white! : Colors.black!, width: 1),
             defaultColumnWidth: const IntrinsicColumnWidth(),
             columnWidths: {
               if (logic.isDeleteMode) 0: const FixedColumnWidth(30),
-              (logic.isDeleteMode ? 1 : 0): const FixedColumnWidth(160),
-              (logic.isDeleteMode ? 2 : 1): const FixedColumnWidth(80),
-              (logic.isDeleteMode ? 3 : 2): const FixedColumnWidth(60),
+              (logic.isDeleteMode ? 1 : 0): const FixedColumnWidth(160),//ma TO
+              (logic.isDeleteMode ? 2 : 1): const FixedColumnWidth(80),//SL
+              (logic.isDeleteMode ? 3 : 2): const FixedColumnWidth(65),//Den
               (logic.isDeleteMode ? 4 : 3): const FixedColumnWidth(90),
               (logic.isDeleteMode ? 5 : 4): const FixedColumnWidth(55),
               (logic.isDeleteMode ? 6 : 5): const FixedColumnWidth(70),
@@ -335,8 +345,9 @@ class _TableTOScreenState extends State<TableTOScreen> {
   }
   //build header
   TableRow _buildHeaderRow() {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     return TableRow(
-      decoration: BoxDecoration(color: Colors.orange[100]),
+      decoration: BoxDecoration(color: isDark ? Colors.orange[500] : Colors.orange[200],),
       children: [
         if (logic.isDeleteMode) const SizedBox(),
         _Header('Mã TO'),
@@ -414,10 +425,11 @@ TableRow _buildTableRow(TOModel t) {
       _Cell(t.completeTime != null
           ? formatTime(t.completeTime!)
           : '—'),
-
-      Center(
-        child: InkWell(
-          onTap: () {
+      Container(
+        alignment: Alignment.center,
+        child: IconButton(
+          icon: Icon(Icons.visibility, color: Colors.blue),
+          onPressed: () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -425,14 +437,14 @@ TableRow _buildTableRow(TOModel t) {
               ),
             );
           },
-          child: const Icon(Icons.visibility, color: Colors.blue),
         ),
       ),
-
-      Center(
-        child: InkWell(
-          onTap: () => _editTO(t),
-          child: const Icon(Icons.edit, color: Colors.orange),
+//inkWell: lam cho bat ki thu gi click dc, di chung voi onTap. IconButton: chi su dung cho icon, di chung voi onPressed
+      Container(
+        alignment: Alignment.center,
+        child: IconButton(
+          icon:  Icon(Icons.edit, color: Colors.orange),
+          onPressed: () => _editTO(t),
         ),
       ),
     ],
@@ -456,12 +468,12 @@ TableRow _buildTableRow(TOModel t) {
                 setState(() {});
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor:  Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
                 elevation: 6,
-                shadowColor: Colors.orange.withOpacity(0.5),
+                shadowColor:  Theme.of(context).colorScheme.primary.withOpacity(0.5),
               ),
               child: Text(
                 'Xác nhận xóa (${logic.selectedTOs.length})',

@@ -43,9 +43,9 @@ class TableTOLogic {
 
       if (priorityCompare != 0) return priorityCompare;
 
-      /// 2. Nếu cùng trạng thái → sort theo số lượng đơn (DESC)
-      int slCompare = b.soLuongDonHang.compareTo(a.soLuongDonHang);
-      if (slCompare != 0) return slCompare;
+      // /// 2. Nếu cùng trạng thái → sort theo số lượng đơn (DESC)
+      // int slCompare = b.soLuongDonHang.compareTo(a.soLuongDonHang);
+      // if (slCompare != 0) return slCompare;
 
       /// 3. Nếu vẫn bằng → sort theo thời gian
       if (a.trangThai == 'Packed') {

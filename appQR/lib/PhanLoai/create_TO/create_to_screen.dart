@@ -89,9 +89,11 @@ class _CreateTOScreenState extends State<CreateTOScreen>
     beepPlayer.setSource(AssetSource('beep.mp3'));
     errorPlayer.setSource(AssetSource('error.mp3'));
 
-    _initTO();
 
-    animationController = AnimationController(
+    if (widget.editTO == null) {
+      _initTO(); // ✅ chỉ tạo mới khi KHÔNG edit
+    }
+      animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
@@ -235,29 +237,56 @@ class _CreateTOScreenState extends State<CreateTOScreen>
       _isProcessing = false;
 
     } else {
-      _showCenterMessage('Vui lòng nhập mã vào ô trống', Colors.orange);
+      _showCenterMessage('Vui lòng nhập mã vào ô trống',  Theme.of(context).colorScheme.primary);
     }
   }
   // ── Complete TO ──
 
-  void _completeAndOpenResult() {
+  Future<void> _completeAndOpenResult() async {
+    //kiem tra da packed chua, neu roi thi ko cho complet
+    // if (logic.originalStatus == 'Packed') {
+    //   _showCenterMessage('TO đã đóng rồi', Colors.red);
+    //   return;
+    // }
+
     if (logic.scannedCodes.isEmpty) {
-      _showCenterMessage('Chưa quét gói hàng nào', Colors.orange);
+      _showCenterMessage(
+        'Chưa quét gói hàng nào',
+        Theme.of(context).colorScheme.primary,
+      );
       return;
     }
-    final toData = logic.buildTOForView(); // 👉 tạo data hiển thị
+    await logic.completeTO(); // chờ server update
 
-    logic.completeTO(); // ❌ không await
+    // await Future.delayed(const Duration(milliseconds: 500));
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TOResultScreen(
-            to: toData,
-           user: widget.user,
+    final to = await ApiService.getOneTO(logic.toId); // lấy lại data thật
+
+    if (!mounted) return;
+
+    if (to != null) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TOResultScreen(
+            to: to, // truyền data chuẩn
+            user: widget.user,
+          ),
         ),
-      ),
-    );
+      );
+      // neu reopen se cap nhat trang thai
+      if (result == true) {
+        final newTO = await ApiService.getOneTO(logic.toId);
+
+        if (newTO != null) {
+          setState(() {
+            logic.loadFromServer(newTO); //  load lại trạng thái Packing
+          });
+        }
+      }
+    } else {
+      _showCenterMessage('Không load được TO', Colors.red);
+    }
   }
   @override
   void dispose() {
@@ -328,7 +357,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.orange[600],
+        color:  Theme.of(context).colorScheme.primary,
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(24),
           bottomRight: Radius.circular(24),
@@ -344,11 +373,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
                 TextButton.icon(
                   onPressed: () {
                     //pushandremove: di trang moi va xoa het duong di
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => PhanLoaiScreen(user: widget.user!),
-                      ),
-                    );
+                    Navigator.pop(context);
                   },
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   label: const Text('Quay lại',
@@ -443,14 +468,14 @@ class _CreateTOScreenState extends State<CreateTOScreen>
         ElevatedButton(
           onPressed: _onManualInput,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange[600],
+            backgroundColor:  Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
             padding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10)),
             elevation: 6,
-            shadowColor: Colors.orange.withOpacity(0.5),
+            shadowColor:  Theme.of(context).colorScheme.primary.withOpacity(0.5),
           ),
           child: const Text('Confirm',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
@@ -466,10 +491,10 @@ class _CreateTOScreenState extends State<CreateTOScreen>
         height: 260,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.orange[600]!, width: 4),
+          border: Border.all(color:  Theme.of(context).colorScheme.primary!, width: 4),
           boxShadow: [
             BoxShadow(
-              color: Colors.orange.withValues(alpha: 0.15),
+              color:  Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
               blurRadius: 16,
               spreadRadius: 2,
             ),
@@ -635,7 +660,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
                                   onTap: () async {
                                     final code = logic.scannedCodes[index].code;
 
-                                    // ✅ XÓA NGAY UI (KHÔNG CHỜ SERVER)
+                                    // XÓA NGAY UI (KHÔNG CHỜ SERVER)
                                     setState(() {
                                       logic.scannedCodes.removeAt(index);
                                     });
@@ -645,15 +670,11 @@ class _CreateTOScreenState extends State<CreateTOScreen>
                                       Navigator.pop(context);
                                     }
 
-                                    // 👉 gọi API ngầm
-                                    final res = await ApiService.removeOrder(
+                                    // gọi API ngầm
+                                    await ApiService.removeOrder(
                                       id: code,
                                       maTO: logic.toId,
                                     );
-
-                                    if (!res) {
-                                      print("❌ remove fail");
-                                    }
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.only(left: 8),
@@ -681,12 +702,12 @@ class _CreateTOScreenState extends State<CreateTOScreen>
       child: ElevatedButton(
         onPressed: _completeAndOpenResult,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange[600],
+          backgroundColor:  Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
           elevation: 8,
-          shadowColor: Colors.orange.withOpacity(0.6),
+          shadowColor:  Theme.of(context).colorScheme.primary.withOpacity(0.6),
         ),
         child: const Text('Complete',
             style: TextStyle(

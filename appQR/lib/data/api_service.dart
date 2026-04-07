@@ -124,16 +124,24 @@ class ApiService {
   }
 
   // taoj dodwn
-  static Future<bool> createOrder(OrderModel o) async {
-    try{
+  static Future<OrderModel?> createOrder(OrderModel o) async {
+    try {
       final response = await http.post(
         Uri.parse('$baseUrl/orders'),
-          headers: {"Content-Type": "application/json", },
-        body: jsonEncode(o.toJson())
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(o.toJson()),
       );
-      return response.statusCode == 200 || response.statusCode ==201;
-    } catch(e){
-      return false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+
+        //  parse thành object
+        return OrderModel.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      print("API error: $e");
+      return null;
     }
   }
 
@@ -209,7 +217,7 @@ class ApiService {
         body: jsonEncode({
           'id': to.maTO, // Truyền luôn id = maTO để json-server dễ quản lý
           'maTO': to.maTO,
-          'danhSachGoiHang': to.danhSachGoiHang.join(','),
+          'danhSachGoiHang': to.danhSachGoiHang,
           'diaDiemGiaoHang': to.diaDiemGiaoHang,
           'trangThai': to.trangThai,
           'packer': to.packer,
@@ -232,7 +240,7 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'maTO': to.maTO,
-          'danhSachGoiHang': to.danhSachGoiHang.join(','),
+          'danhSachGoiHang': to.danhSachGoiHang,
           'diaDiemGiaoHang': to.diaDiemGiaoHang,
           'trangThai': to.trangThai,
           'packer': to.packer,
@@ -273,7 +281,13 @@ static Future<List<Map<String, dynamic>>> getTOStatus (String trangThai) async{
     return [];
 }
 
-
+//cap nhat trang thai Packing khi reopen
+  static Future<void> reopenTO(String maTO) async {
+    await http.put(
+      Uri.parse("$baseUrl/TO/$maTO/reopen"),
+      headers: {"Content-Type": "application/json"},
+    );
+  }
 //lay theo ma TO
   static Future<TOModel?> getOneTO(String maTO) async {
     final res = await http.get(Uri.parse("$baseUrl/TO?maTO=$maTO"));
@@ -281,8 +295,7 @@ static Future<List<Map<String, dynamic>>> getTOStatus (String trangThai) async{
     if (res.statusCode == 200) {
       final body = jsonDecode(res.body);
 
-      print("BODY TYPE: ${body.runtimeType}");
-      print("BODY: $body");
+      print("BODY lay tu server: $body");
 
       // ✅ nếu là List
       if (body is List && body.isNotEmpty) {

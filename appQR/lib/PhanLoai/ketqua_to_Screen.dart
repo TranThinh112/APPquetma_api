@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/to_model.dart';
 import '../PhanLoai/create_TO/create_to_screen.dart';
-import '../models/BillTo.dart';
+import '../BILL/BillTo.dart';
 import '../PhanLoai/PhanLoaiScreen.dart';
+import '../data/api_service.dart';
+
 //ko witget
 class TOResultScreen extends StatelessWidget {
   final TOModel to;
@@ -65,7 +67,11 @@ class TOResultScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         )
                       ),
-                    onPressed: () => Navigator.pop(context),
+                      onPressed: () async {
+                        await ApiService.reopenTO(to.maTO);
+
+                        Navigator.pop(context, true);
+                      },
                     child: const Text("ReOpen",
                       style: TextStyle(
                         fontSize: 12, color: Colors.black, fontWeight: FontWeight.bold
@@ -111,9 +117,12 @@ class TOResultScreen extends StatelessWidget {
                        )
                      ),
                        onPressed: (){
-                        Navigator.pushReplacement(
+                        Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (_)=> CreateTOScreen(user: user)),
+                            MaterialPageRoute(
+                                builder: (_)=> CreateTOScreen(user: user),
+                            ),
+                                (route) => route.isFirst,
                         );
                        },
                        child: const Text("Tạo mới",
@@ -189,12 +198,12 @@ class TOResultScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               flex: 4,
-                              child: Text(item['code']),
+                              child: Text(item['orderId']),
                             ),
                             Expanded(
                               flex: 2,
                               child: Text(
-                                "${item['weight']} kg",
+                                "${item['soKi']} kg",
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -237,13 +246,7 @@ class TOResultScreen extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () {
                     //pushandremove: di trang moi va xoa het duong di
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PhanLoaiScreen(user: user!),
-                      ),
-                          (route) => route.isFirst, // ✅ giữ màn đầu
-                    );
+                    Navigator.popUntil(context, (route) => route.isFirst);
                   },
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   label: const Text('Quay lại',

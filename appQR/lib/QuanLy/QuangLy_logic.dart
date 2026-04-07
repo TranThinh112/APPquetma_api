@@ -1,4 +1,4 @@
-import 'package:appqr1/models/BillTo.dart';
+import 'package:appqr1/BILL/BillTo.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter/services.dart';

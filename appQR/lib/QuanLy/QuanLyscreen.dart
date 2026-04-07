@@ -7,7 +7,7 @@
 ///   - Thêm column KG (trọng lượng)
 ///   - Hiển thị: Mã TO | Số lượng | Địa điểm | Trạng thái | Trọng lượng (KG)
 /// =============================================================
-import 'package:appqr1/models/BillTo.dart';
+import 'package:appqr1/BILL/BillTo.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +16,7 @@ import '../data/api_service.dart';
 import '../models/to_model.dart';
 import '../models/Oders_model.dart';
 import '../QuanLy/QuangLy_logic.dart';
-import '../models/BillTo.dart';
+import '../BILL/BillTo.dart';
 import '../models/appbar_logo.dart';
 
 
@@ -220,7 +220,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         prefixIcon: Icon(
                           Icons.search,
-                          color: Colors.orange[600],
+                          color:  Theme.of(context).colorScheme.primary,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -237,7 +237,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                            color: Colors.orange[600]!,
+                            color:  Theme.of(context).colorScheme.primary!,
                             width: 2,
                           ),
                         ),
@@ -250,7 +250,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                   //nut quet ma
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.orange[700],
+                      color:  Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: IconButton(
@@ -287,7 +287,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Table(
-                    border: TableBorder.all(color: Colors.grey[400]!, width: 1),
+                    border: TableBorder.all(color: isDark ? Colors.white! : Colors.black!, width: 1),
                     // defaultColumnWidth: const IntrinsicColumnWidth(),
                     columnWidths: {
                       0: const FixedColumnWidth(175), //1 id
@@ -301,7 +301,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                     children: [
                       // Header row
                       TableRow(
-                        decoration: BoxDecoration(color: Colors.orange[100]),
+                        decoration: BoxDecoration(color: isDark ? Colors.orange[500] : Colors.orange[200]),
                         children: const [
                           _Header('Mã Đơn'),
                           _Header('Nơi đi'),

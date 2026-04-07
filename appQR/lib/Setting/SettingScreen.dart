@@ -13,11 +13,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool isDarkMode = false;
+  // bool isDarkMode = false;
   String language = "Tiếng Việt";
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = MyApp.of(context)?.isDarkMode ?? false;
     return Scaffold(
       appBar: AppBar(
         title: const Text("Cài đặt"),
@@ -94,11 +95,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             title: Text(isDarkMode ? "Light Mode" : "Dark Mode"),
             value: isDarkMode,
-            onChanged: (value) {
-              setState(() {
-                isDarkMode = value;
-              });
 
+            onChanged: (value) {
               MyApp.of(context)?.toggleTheme(value);
             },
           ),

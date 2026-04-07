@@ -44,19 +44,19 @@ class PhanLoaiScreen extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 18),
-                    _buildMenuButton(
-                      icon: Icons.qr_code_scanner,
-                      label: 'Scan TO',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ScanTOScreen(),
-                          ),
-                        );
-                      },
-                    ),
+                    // const SizedBox(height: 18),
+                    // _buildMenuButton(
+                    //   icon: Icons.qr_code_scanner,
+                    //   label: 'Scan TO',
+                    //   onTap: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) => const ScanTOScreen(),
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
                     const SizedBox(height: 18),
                     _buildMenuButton(
                       icon: Icons.list_alt,

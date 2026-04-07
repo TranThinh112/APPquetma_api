@@ -13,6 +13,9 @@ import '../TaoDon/TaoDon_logic.dart';
 import '../data/api_service.dart';
 import '../models/Oders_model.dart';
 import 'package:audioplayers/audioplayers.dart';
+import '../BILL/BillScreen.dart';
+import 'dart:async';
+import '../main.dart';
 
 
 class TaoDonScreen extends StatefulWidget {
@@ -84,6 +87,13 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
    String KhuVucGui = "";
    String KhuVucNhan= "";
    final _formkey = GlobalKey<FormState>();
+   bool isComplete = false;
+  List<OrderModel> filteredList = [];
+
+  // caác biến phục vụ thông báo
+  Timer? _messageTimer;
+  String? centerMessage;
+  Color centerMessageColor = Colors.green;
 
 
    final Map<String, TextEditingController> controllers = {
@@ -118,6 +128,21 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
       await player.play(AssetSource('error.mp3'));
     } catch (_) {}
   }
+
+  //hiê thông báo
+  void _showCenterMessage(String text, Color color,
+      {Duration duration = const Duration(milliseconds: 900)}) {
+    _messageTimer?.cancel();
+    setState(() {
+      centerMessage = text;
+      centerMessageColor = color;
+    });
+    _messageTimer = Timer(duration, () {
+      if (!mounted) return;
+      setState(() => centerMessage = null);
+    });
+  }
+  // xu lý nhập textfrorm
   void input() async{
      final logic = TaoDonLogic();
      //xoa dau cham
@@ -154,16 +179,43 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
        giatien: giaTien,
      );
      print(order.toJson());
-     bool success = await ApiService.createOrder(order);
+     OrderModel? newOrder = await ApiService.createOrder(order);
 
-     if (success) {
+     if (newOrder != null) {
        print("Gửi thành công 🚀");
        _playBeep();
+
+       setState(() {
+         isComplete = true;
+         filteredList.add(newOrder);
+       });
+       _showCenterMessage('Tạo đơn thành công', Colors.green);
      } else {
-       print("Lỗi ❌");
+       print("Lỗi ");
        _playErrorSound();
      }
 
+  }
+
+  //reset sau khi ấm tạo đơ mới
+  void resetForm() {
+    // reset trạng thái
+    setState(() {
+      isComplete = false;
+
+      // tạo mã đơn mới
+      maDon = TaoDonLogic().randomMa();
+      filteredList.clear();
+    });
+
+    //  clear toàn bộ input
+    sender.clear();
+    in4sender.clear();
+    receiver.clear();
+    in4receiver.clear();
+    nameproduct.clear();
+    weight.clear();
+    price.clear();
   }
   @override
   Widget build(BuildContext context) {
@@ -180,18 +232,12 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                         key: _formkey,
                           child: Column(
                             children: [
-                              Align(
-                                alignment: Alignment.center,
-                                child: SizedBox(
-                                  width: 360,
-                                  child: Text("Mã vận đơn: $maDon",
-                                    style: TextStyle(fontSize: 15,color: Colors.black, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 10),
+                              buildAfterComplete(context),
+
+                              SizedBox(height: 20),
                                TextFormField(
                                     controller: sender,
+                                    readOnly: isComplete,
                                     decoration: InputDecoration(
                                       labelText: "Người gửi",
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -207,9 +253,10 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                                       return null;
                                     }
                                   ),
-                              // SizedBox(height: 10),
-                             TextFormField(
+                              SizedBox(height: 10),
+                              TextFormField(
                                     controller: in4sender,
+                                  readOnly: isComplete,
                                     decoration: InputDecoration(
                                       labelText: "Thông tin, địa chỉ ",
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -224,8 +271,9 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                                       return null;
                                     }
                                   ),
-                              // SizedBox(height: 10),
+                              SizedBox(height: 10),
                               TextFormField(
+                                  readOnly: isComplete,
                                     controller: receiver,
                                     decoration: InputDecoration(
                                       labelText: "Người nhận",
@@ -243,6 +291,7 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                                   ),
                               // SizedBox(height: 10),
                               TextFormField(
+                                  readOnly: isComplete,
                                     controller: in4receiver,
                                     decoration: InputDecoration(
                                       labelText: "Thông tin, địa chỉ ",
@@ -260,6 +309,7 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                                   ),
                               // SizedBox(height: 10),
                               TextFormField(
+                                  readOnly: isComplete,
                                     controller: nameproduct,
                                     decoration: InputDecoration(
                                       labelText: "Thông tin sản phẩm ",
@@ -275,7 +325,7 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                                       return null;
                                     }
                                   ),
-                          // SizedBox(height: 10),
+                          SizedBox(height: 10),
                           Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -284,14 +334,15 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                    TextFormField(
-                                    controller: weight,
-                                        // TextInputType.numberWithOptions(decimal: true), chi cho nhap so
-                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                    inputFormatters: [
-                                      //chan du lieu: ^: bat dau chuoi, \d* 0 or nhieu so, \d.?: co the co 1 dau . , \d*: 0 or nhieu so phia sau
-                                      DecimalFormatter(),
-                                    ],
+                                      TextFormField(
+                                          readOnly: isComplete,
+                                          controller: weight,
+                                              // TextInputType.numberWithOptions(decimal: true), chi cho nhap so
+                                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                          inputFormatters: [
+                                            //chan du lieu: ^: bat dau chuoi, \d* 0 or nhieu so, \d.?: co the co 1 dau . , \d*: 0 or nhieu so phia sau
+                                            DecimalFormatter(),
+                                          ],
                                     decoration: InputDecoration(
                                       labelText: "Khối lượng",
                                       suffixText: "KG",
@@ -320,6 +371,7 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     TextFormField(
+                                        readOnly: isComplete,
                                     controller: price,
                                     keyboardType: TextInputType.number,
                                     inputFormatters: [
@@ -349,12 +401,14 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
                             ]
                         ),
                         SizedBox(height: 10),
-                        SizedBox(
+                        isComplete
+                            ?SizedBox()
+                            :SizedBox(
                           width: 150,
                           height: 50,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange[400], // màu
+                              backgroundColor:  Theme.of(context).colorScheme.primary, // màu
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10), // bo góc
                               ),
@@ -377,6 +431,209 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
           ]
           ),
       )
+    );
+  }
+  Widget buildAfterComplete(BuildContext context) {
+    if (!isComplete) return const SizedBox();
+
+    return Column(
+      children: [
+        // Mã vận đơn + copy
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                "Mã vận đơn: $maDon",
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.copy),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: maDon));
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Đã copy mã đơn")),
+                );
+              },
+            ),
+          ],
+        ),
+
+        SizedBox(height: 10),
+
+        //  Row các nút
+        Row(
+          children: [
+            const SizedBox(width: 40),
+
+            // nút Xem
+            SizedBox(
+              width: 100,
+              height: 30,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white70,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  print("xem ok");
+                  print("filteredList length: ${filteredList.length}");
+                  if (filteredList.isEmpty) {
+                    print("List rỗng ❌");
+                    return;
+                  }
+                  final order = filteredList.first;
+                  print("order id: ${order.id} ");
+                  showGeneralDialog(
+                    context: context,
+                    barrierDismissible: true,
+                    barrierLabel: "",
+                    barrierColor: Colors.black54,
+                    transitionDuration: Duration.zero,
+                    pageBuilder: (context, animation, secondaryAnimation) {
+                      return Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: 400,
+                            maxHeight: 700, //  GIỚI HẠN CHIỀU CAO
+                          ),
+                          child: Dialog(
+                            backgroundColor: Colors.transparent,
+                            insetPadding: const EdgeInsets.all(20),
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(10, 1, 10, 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+
+                              // Scroll
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch, //giãn theo chiều ngang
+                                  children: [
+                                    SizedBox(height: 50),
+                                    //  BILL (có thể nhiều cái)
+                                    ...filteredList.map((order) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // bilL
+                                          Container(
+                                            padding: const EdgeInsets.all(3),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black,
+                                              borderRadius: BorderRadius.circular(14),
+                                            ),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: BillScreen(order: order),
+                                            ),
+                                          ),
+                                          SizedBox(height: 10),
+                                          // mã đơn ở mõi bill
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 4, bottom: 4),
+                                            child: Text(
+                                              order.id,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ),
+                                    //nut xem trong TO
+                                    Container(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 4, bottom: 4),
+                                          child:  ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:  Theme.of(context).colorScheme.primary, // màu
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(10), // bo góc
+                                                ),
+                                              ),
+                                              onPressed: (){
+                                                // print("xem ok")
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text(
+                                                "OK",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              )
+                                          ),
+                                        )
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: const Text(
+                  "Xem",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            const SizedBox(width: 30),
+
+            // nút Tạo đơn mới
+            SizedBox(
+              width: 150,
+              height: 30,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:  Theme.of(context).colorScheme.primary, // màu
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10), // bo góc
+                  ),
+                ),
+                onPressed: resetForm,
+                child: Text(
+                  "Tạo Đơn Mới",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

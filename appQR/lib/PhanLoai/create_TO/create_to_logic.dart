@@ -54,6 +54,7 @@ class CreateTOLogic {
 
   // Constructor
   CreateTOLogic({required Map<String, dynamic>? user, TOModel? editTO}) {
+
     _user = user;
     packer = user?['username'] ?? 'unknown';
 
@@ -70,18 +71,12 @@ class CreateTOLogic {
         editTO.danhSachGoiHang.asMap().entries.map((entry) {
           final item = entry.value;
           return ScannedItem(
-            code: item['orderID'] ?? '',
+            code: item['orderId'] ?? '',
             timestamp: DateTime.now().subtract(Duration(seconds: entry.key)),
-            weight: (item['soKI'] ?? 0).toDouble(),
+            weight: (item['soKi'] ?? 0).toDouble(),
           );
         }),
       );
-    } else {
-      // Tạo mới
-      // _initNewTO();
-      // toId = _generateTOId();
-      // createdAt = DateTime.now();
-      // _saveTOToDatabase(isNew: true);
     }
   }
 
@@ -119,6 +114,8 @@ class CreateTOLogic {
 
     tongKhoiLuong = to.totalWeight ?? 0;
     station = to.diaDiemGiaoHang ?? "";
+    originalStatus = to.trangThai;
+    completedAt = to.completeTime;
   }
   /// Xử lý mã quét — trả về kết quả để UI phản hồi
   ///
@@ -170,38 +167,42 @@ class CreateTOLogic {
     }
   }
 
-  /// Đóng TO (hoàn thành bao hàng)
+  /// dong TO, gui toan bo data len server
   Future<bool> completeTO() async {
     if (scannedCodes.isEmpty) return false;
 
+    //set trang thasi packed truoc khi buldTO de upload
     originalStatus = 'Packed';
     // Chỉ set completedAt một lần khi đóng lần đầu
-    completedAt ??= DateTime.now();
+    completedAt = DateTime.now();
 
-    final toComplete = _buildTOModel();
-    await _updateTOInDatabase(); // Chạy thẳng lệnh Update lên server
+    final model = _buildTOModel(status: 'Packed');
+
+    print("FINAL JSON gui len server: ${model.toJson()}");
+
+    await ApiService.updateTO(model); // Chạy thẳng lệnh Update lên server
 
     return true;
   }
 
-  // ── Private helpers ──
+  // ──tao Model update trang thai cua TO sau khi bam complete ──
 
-  TOModel _buildTOModel() {
+  TOModel _buildTOModel({String? status}) {
     return TOModel(
       maTO: toId,
       danhSachGoiHang: scannedCodes.map((item) => {
-        'code': item.code,
-        'weight': item.weight,
+        'orderId': item.code,
+        'soKi': item.weight,
       }).toList(),
       diaDiemGiaoHang: station,
-      trangThai: originalStatus,
+      trangThai: status ?? originalStatus,
       packer: packer,
       totalWeight: tongKhoiLuong,
       ngayTao: createdAt,
       completeTime: completedAt,
     );
   }
-
+//upload TO khi lan dau dc tao
   Future<void> _saveTOToDatabase({bool isNew = false}) async {
     try {
       print("API create TO: ${toId}");
@@ -219,6 +220,10 @@ class CreateTOLogic {
   Future<void> _updateTOInDatabase() async {
     try {
       final model = _buildTOModel();
+
+      print("=== DATA GUI LEN SERVER ===");
+      print(model.danhSachGoiHang);
+
       await ApiService.updateTO(model);
     } catch (e) {
       debugPrint("Lỗi update thay đổi: $e");
@@ -228,8 +233,8 @@ class CreateTOLogic {
     return TOModel(
       maTO: toId,
       danhSachGoiHang: scannedCodes.map((item) => {
-        'code': item.code,
-        'weight': item.weight,
+        'orderId': item.code,
+        'soKi': item.weight,
       }).toList(),
       diaDiemGiaoHang: station,
       trangThai: 'Packed',
