@@ -95,9 +95,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             title: Text(isDarkMode ? "Light Mode" : "Dark Mode"),
             value: isDarkMode,
-
+//bat tat nut -> goi ve myapp cap nhat trang thai
             onChanged: (value) {
               MyApp.of(context)?.toggleTheme(value);
+              setState(() {});
             },
           ),
           ListTile(

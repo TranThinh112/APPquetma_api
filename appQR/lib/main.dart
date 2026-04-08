@@ -7,7 +7,9 @@
 ///        - Quản lý đơn hàng
 ///        - Cài đặt
 /// =============================================================
+  // thu vien cung cap UI co ban
 import 'package:flutter/material.dart';
+//goi cac file lien qyan
 import 'PhanLoai/PhanLoaiScreen.dart';
 import 'TraCuu/TraCuuScreen.dart';
 import 'Login/LoginScreen.dart';
@@ -15,32 +17,18 @@ import 'QuanLy/QuanLyscreen.dart';
 import 'TaoDon/TaoDonScreen.dart';
 import 'data/api_service.dart';
 import 'Setting/SettingScreen.dart';
+
+//lam viec voi he thong: copy/ paste, xoay man hinh
 import 'package:flutter/services.dart';
-import 'dart:io';
-import 'TaoDon/TaoDon_logic.dart';
 
-class MyHttpOverrides extends HttpOverrides {
-    @override
-    HttpClient createHttpClient(SecurityContext? context) {
-      return super.createHttpClient(context)
-        ..badCertificateCallback =
-            (X509Certificate cert, String host, int port) => true;
-    }
-  }
+//luu trang thai darkmode
+  import 'package:shared_preferences/shared_preferences.dart';
+
+//setup moi turong
 Future<void> main() async{
-  // final logic = TaoDonLogic();
-  // print( logic.getRegionFromAddress("51 Nguyễn Trãi, Xã Đông Hội, Huyện Đông Anh, Hà Nội"));      // HCM
-  // print( logic.getRegionFromAddress("binh duog"));       // HCM
-  // print( logic.getRegionFromAddress("hcm"));             // HCM
-  // print( logic.getRegionFromAddress("32 Nguyễn Trãi, Phường Hàng Bạc, Quận Hoàn Kiếm, Hà Nội"));              // HCM
-  // print( logic.getRegionFromAddress("78 Phạm Văn Đồng, Xã Điện Hòa, Huyện Điện Bàn, Quảng Nam"));        // HCM
-  // print( logic.getRegionFromAddress("18 Phạm Văn Đồng, Xã Ia Kênh, Huyện Chư Păh, Gia Lai"));             // MT
-  // print( logic.getRegionFromAddress("đà nẵng"));         // MT
-  // print( logic.getRegionFromAddress("74 Nguyễn Trãi, Xã Mỹ Khánh, Huyện Phong Điền, Cần Thơ"));         // CT
-  // print( logic.getRegionFromAddress("51 Lê Lợi, Phường Hải Châu, Quận Hải Châu, Đà Nẵng"));
-  HttpOverrides.global = MyHttpOverrides();
-
+// tao lien ket Flutter framework và engine
   WidgetsFlutterBinding.ensureInitialized();
+  //chay app. Di tu widget goc MyApp -> build full UI
   runApp(const MyApp());
 
   // gọi API chạy nền
@@ -51,6 +39,7 @@ Future<void> main() async{
     debugPrint("API lỗi: $e");
   });
 }
+//witget goc
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -61,19 +50,44 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
+//witget goc
 class _MyAppState extends State<MyApp> {
   bool isDarkMode = false;
 
+  //luu trang thai darkmode
+  Future<void> saveTheme(bool isDark) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', isDark);
+  }
+
+  //lay lai trang thai isDark khi mo app
+  Future<bool> loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('isDarkMode') ?? false; // default: light
+  }
+
+  //goi khi mo app -> khi mo app -> load status cu
+  @override
+  void initState() {
+    super.initState();
+    loadTheme().then((value) {
+      setState(() {
+        isDarkMode = value;
+      });
+    });
+  }
+  //doi theme ngay lap tuc va luu lai
   void toggleTheme(bool value) {
     setState(() {
       isDarkMode = value;
     });
+    saveTheme(value); // lưu lại
   }
 //định nghĩa màu
   @override
-  @override
   Widget build(BuildContext context) {
     return MaterialApp(
+
       debugShowCheckedModeBanner: false,
 
       // LIGHT MODE
@@ -84,8 +98,6 @@ class _MyAppState extends State<MyApp> {
           surface: Colors.white// màu phụ
         ),
       ),
-
-
 
       // DARK MODE
       darkTheme: ThemeData(
@@ -99,7 +111,7 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
 
-      //  bật/tắt dark mode của bạn
+      //  quyet dinh app dang sang hay toi
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
       home: const LoginPage(),
@@ -115,50 +127,52 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
-
+//giao dien chinh gom 4 chuc nang
 class HomeScreen extends StatelessWidget {
   final Map<String, dynamic> user;
 
   const HomeScreen({super.key, required this.user});
 
+//hien thi 1 card co mau nen + hieu ung
   Widget buildCard(
     Color color,
     IconData? icon,
-    String? title, {
+    String title, {
     VoidCallback? onTap,
   }) {
     return Material(
       color: Colors.transparent,
+      //InkWell: lam cho bat cu thu gi co the click
       child: InkWell(
         onTap: onTap,
-        splashColor: Colors.white.withOpacity(0.3),
-        highlightColor: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(15),
+
+        // hien thi card
         child: Container(
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(20),
+            // hieu ung do bong
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withOpacity(1),
                 blurRadius: 8,
                 offset: Offset(0, 4),
               ),
             ],
           ),
+
+          // noi dung trong card tu tren xuong, can giua theo chieu doc
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
+
                 Icon(icon, size: 40, color: Colors.black54),
                 const SizedBox(height: 10),
-              ],
-              if (title != null && title.isNotEmpty)
+                // hien thi text
                 Text(
                   title,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500 ,color: Colors.black),
                   textAlign: TextAlign.center,
-
                 ),
             ],
           ),
@@ -166,7 +180,7 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
+//build 4 nut bam
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -189,7 +203,7 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     buildCard(
                       Colors.blue[100]!,
-                      Icons.camera_alt,
+                      Icons.category,
                       "Phân Loại",
                       onTap: () {
                         Navigator.push(
@@ -207,6 +221,7 @@ class HomeScreen extends StatelessWidget {
                       onTap: (){
                         Navigator.push(
                           context,
+                          //route chuyen trang
                           MaterialPageRoute(
                             builder: (context) => const TraCuuScreen(),
                           ),
@@ -245,7 +260,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-            // Header - overlay on top
+            // Header - AppBar
             Container(
               width: double.infinity,
               height: 150,
