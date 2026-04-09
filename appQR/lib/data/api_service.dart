@@ -4,7 +4,7 @@ import '../QuanLy/QuanLyscreen.dart';
 import '../models/to_model.dart';
 import '../models/Oders_model.dart';
 class ApiService {
-
+//http
   static const String baseUrl = "https://server-production-7598.up.railway.app";
 
   /// lấy tất cả orders để đếm SL
@@ -46,7 +46,7 @@ class ApiService {
     if (res.statusCode == 200) {
       final Map<String, dynamic> json = jsonDecode(res.body);
 
-      final List data = json['data']; // 🔥 lấy đúng key
+      final List data = json['data'];
       final int total = json['total'];
       final int inbound =json['inbound'];
       return {
@@ -85,13 +85,12 @@ class ApiService {
       body: jsonEncode({"maTO": maTO}),
     );
 
-    print("STATUS: ${response.statusCode}");
-    print("BODY: ${response.body}");
+    // print("STATUS: ${response.statusCode}");
+    // print("BODY: ${response.body}");
 
     try {
       final data = jsonDecode(response.body);
 
-      // ✅ chuẩn hóa response
       if (response.statusCode == 200) {
         return {
           "success": true,
@@ -140,7 +139,7 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      print("API error: $e");
+      // print("API error: $e");
       return null;
     }
   }
@@ -149,10 +148,8 @@ class ApiService {
   // tìm user theo ID
   static Future<Map<String, dynamic>?> getUser(String username, {String? password,}) async {
     try {
-      // 🔥 build URL theo trường hợp
       String url = "$baseUrl/login/users/$username";
 
-      // 🔐 nếu có password → login
       if (password != null && password.isNotEmpty) {
         url += "/$password";
       }
@@ -174,10 +171,10 @@ class ApiService {
           return data[0];
         }
       }
-      print("RESPONSE: ${response.body}");
+      // print("RESPONSE: ${response.body}");
       return null;
     } catch (e) {
-      print("getUser error: $e");
+      // print("getUser error: $e");
       return null;
     }
   }
@@ -195,12 +192,12 @@ class ApiService {
         return true;
       }
       if (response.statusCode == 404) {
-        print('Server update: user not found $username');
+        // print('Server update: user not found $username');
         return false;
       }
       return false;
     } catch (e) {
-      print('Server update exception: $e');
+      // print('Server update exception: $e');
       return false;
     }
   }
@@ -250,7 +247,7 @@ class ApiService {
         }),
 
       );
-      print("TO RAW: ${to.danhSachGoiHang}");
+      // print("TO RAW: ${to.danhSachGoiHang}");
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       return false;
@@ -295,13 +292,11 @@ static Future<List<Map<String, dynamic>>> getTOStatus (String trangThai) async{
     if (res.statusCode == 200) {
       final body = jsonDecode(res.body);
 
-      print("BODY lay tu server: $body");
+      // print("BODY lay tu server: $body");
 
-      // ✅ nếu là List
       if (body is List && body.isNotEmpty) {
         return TOModel.fromJson(body[0]);
       }
-      // ✅ nếu là Map
       if (body is Map<String, dynamic>) {
         return TOModel.fromJson(body);
       }

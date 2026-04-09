@@ -22,14 +22,12 @@ dependencies:
   url_launcher: ^6.3.2    # Mở URL (web, tel, mail, app ngoài)
   mobile_scanner: ^7.2.0 # Quét QR / Barcode bằng camera
   audioplayers: ^6.1.0    # Phát âm thanh (mp3, wav...)
-  image_picker: ^1.1.2 # Chọn ảnh từ gallery hoặc camera
   intl: ^0.19.0    # Format ngày giờ, số, đa ngôn ngữ
-  path: ^1.8.3  # Xử lý đường dẫn file (join, normalize...)
-  http: ^1.2.0   # Gọi API (GET, POST...)
+  path: ^1.8.3  # Xử lý đường dẫn file trong du an
+  http: ^1.2.0   # Gọi API (GET, POST...), lay url server, cac function
   qr_flutter: ^4.1.0   # Tạo QR code hiển thị trên UI
   barcode_widget: ^2.0.3   # Tạo barcode (EAN, Code128...)
   flutter_lints: ^6.0.0  # Rule lint giúp code sạch, chuẩn
-#  dotted_line: ^3.2.2 # Vẽ đường nét đứt (UI decoration)
   share_plus: ^7.2.1   # Chia sẻ nội dung (text, file...)
   path_provider: ^2.1.2   # Lấy thư mục hệ thống (cache, document..
   diacritic: ^0.1.3  #dùng xóa dấu triếng việt cho trang tao don/ search
@@ -56,11 +54,6 @@ flutter_launcher_icons:
   windows:
     generate: true
     image_path: "assets/app_icon.png"
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
 flutter:
 
   # The following line ensures that the Material Icons font is

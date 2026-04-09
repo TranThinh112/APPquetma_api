@@ -7,7 +7,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:image_picker/image_picker.dart';
 import 'scan_to_logic.dart';
 import 'package:appqr1/models/appbar_logo.dart';
 
@@ -27,7 +26,6 @@ class _ScanTOScreenState extends State<ScanTOScreen>
 
   final TextEditingController inputController = TextEditingController();
   final AudioPlayer player = AudioPlayer();
-  final ImagePicker _picker = ImagePicker();
 
   // Scanner tối ưu: unrestricted = quét liên tục
   final MobileScannerController controller = MobileScannerController(
@@ -126,34 +124,6 @@ class _ScanTOScreenState extends State<ScanTOScreen>
     isProcessing = false;
   }
 
-  // ── Quét từ gallery ──
-
-  Future<void> _scanFromGallery() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return;
-
-    final BarcodeCapture? capture = await controller.analyzeImage(image.path);
-    if (capture != null && capture.barcodes.isNotEmpty) {
-      final barcode = capture.barcodes.first;
-      final newValue = barcode.rawValue?.trim() ?? "";
-      if (newValue.isNotEmpty) {
-        isProcessing = true;
-        final result = logic.processCode(newValue, barcode.format.name);
-        await _handleResult(result);
-        isProcessing = false;
-        return;
-      }
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy mã hợp lệ trong ảnh'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    await _playErrorSound();
-  }
 
   @override
   void dispose() {

@@ -373,7 +373,7 @@ class QuanLyScreenState extends State<QuanLyScreen> {
                                     ),
                                   );
                                 }
-                                    : null, // 🔥 disable nếu không có TO
+                                    : null, // disable nếu không có TO
                                 child: Icon(Icons.visibility, color: hasTO ? Colors.blue : Colors.grey, // 🔥 đổi màu),
                               ),
                             ),

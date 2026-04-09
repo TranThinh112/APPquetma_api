@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -454,15 +453,14 @@ class _TraCuuScreenState extends State<TraCuuScreen> {
                             ),
                           ),
                           onPressed: () {
-                            print("xem ok");
-                            print("filteredList length: ${filteredList.length}");
+                            // print("xem ok");
+                            // print("filteredList length: ${filteredList.length}");
                             if (filteredList.isEmpty) {
-                              print("List rỗng ");
+                              // print("List rỗng ");
                               return;
                             }
                             // filteredList danh sach da dc loc
                             final order = filteredList.first;
-                            print("order id: ${order.id} ");
                             showGeneralDialog(
                               context: context,
                               barrierDismissible: true,

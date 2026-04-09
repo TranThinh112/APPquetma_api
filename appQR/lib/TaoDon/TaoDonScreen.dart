@@ -24,6 +24,7 @@ class TaoDonScreen extends StatefulWidget {
   @override
   State<TaoDonScreen> createState() => _TaoDonScreenState();
 }
+
 // ko cho usser nhap vao chu, tu nhay 0 khi nhap .6 cho khoi luong
 class DecimalFormatter extends TextInputFormatter {
   @override
@@ -37,8 +38,8 @@ class DecimalFormatter extends TextInputFormatter {
     if (text.startsWith('.')) {
       text = '0$text';
     }
-
-    // chỉ cho số + 1 dấu .
+//dùng để kiểm tra chuỗi. ^: Start chuoi, \d*: 0 or nhieu so, \.?: Có thể có hoặc không dấu chấm .,
+// \d*: 0 hoặc nhiều chữ số phía sau, $: Kết thúc chuỗi
     if (!RegExp(r'^\d*\.?\d*$').hasMatch(text)) {
       return oldValue;
     }
@@ -178,6 +179,7 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
        diachinhan: in4receiver.text,
        giatien: giaTien,
      );
+
      print(order.toJson());
      OrderModel? newOrder = await ApiService.createOrder(order);
 
@@ -194,7 +196,6 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
        print("Lỗi ");
        _playErrorSound();
      }
-
   }
 
   //reset sau khi ấm tạo đơ mới
@@ -217,6 +218,7 @@ class _TaoDonScreenState extends State<TaoDonScreen> {
     weight.clear();
     price.clear();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

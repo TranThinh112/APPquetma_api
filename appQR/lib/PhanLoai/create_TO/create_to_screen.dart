@@ -7,7 +7,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../models/to_model.dart';
 import 'create_to_logic.dart';
@@ -36,7 +35,6 @@ class _CreateTOScreenState extends State<CreateTOScreen>
   final FocusNode inputFocus = FocusNode();
   final TextEditingController inputController = TextEditingController();
   final AudioPlayer player = AudioPlayer();
-  final ImagePicker _picker = ImagePicker();
   final AudioPlayer beepPlayer = AudioPlayer();
   final AudioPlayer errorPlayer = AudioPlayer();
   bool _isShowingMessage = false;
@@ -91,7 +89,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
 
 
     if (widget.editTO == null) {
-      _initTO(); // ✅ chỉ tạo mới khi KHÔNG edit
+      _initTO(); // chỉ tạo mới khi KHÔNG edit
     }
       animationController = AnimationController(
       vsync: this,
@@ -156,7 +154,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
 
         if (to != null) {
           setState(() {
-            logic.loadFromServer(to); // ✅ update trước
+            logic.loadFromServer(to); // update trước
           });
 
           _playBeep();
@@ -210,7 +208,7 @@ class _CreateTOScreenState extends State<CreateTOScreen>
 
           if (to != null) {
             setState(() {
-              logic.loadFromServer(to); // ✅ update trước
+              logic.loadFromServer(to); // update trước
             });
 
             _playBeep();
